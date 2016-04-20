@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from load_mnist import load_mnist, pad_mnist, movie_mnist
 
-learning_rate = 0.0001
+learning_rate = 0.00001
 n_epochs = 10
 
 
@@ -23,8 +23,8 @@ def build_model():
 
     NLL = -T.sum(T.log(model.output) * y)
     L2 = sum([T.sum(T.pow(param, 2)) for param in model.params])
-    loss = NLL + 0.00001 * L2
-    #loss = NLL
+    #loss = NLL + 0.00001 * L2
+    loss = NLL
     model.set_loss(loss)
     gradients = model.get_grads()
     # train_model is a function that updates the model parameters by
@@ -73,7 +73,7 @@ def train_model(model, train_images, train_targets):
             frame = frame
             target = train_targets[i]
             old_error = error
-            for j in range(20):
+            for j in range(8):
                 #[frame, tx, ty] = next(movie_gen)
                 prediction, loss, px, py, delta, sigma_sq = model.train(frame, target)
 

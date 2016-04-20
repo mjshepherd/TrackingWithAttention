@@ -113,19 +113,19 @@ class TestLSTM(AbstractModel):
         self.lstm_layer_sizes = [100]
         layer_outputs = self.deserialize(self.h_tm1)
         layer_states = self.deserialize(self.c_tm1)
-        read = ReadLayer(
+        readlayer = ReadLayer(
             rng,
-            input=layer_outputs[0],
-            input_shape=(self.lstm_layer_sizes[0], 1),
+            h=layer_outputs[0],
+            h_shape=(self.lstm_layer_sizes[0], 1),
             image=self.input,
             image_shape=input_dims,
             N=12,
-            name='read'
+            name='Read Layer'
         )
 
         layer1 = LSTMLayer(
             rng,
-            input=read.glimpse.reshape((144, 1)),
+            input=readlayer.output.reshape((144, 1)),
             # input=self.input.reshape((num_in, 1)),
             n_in=144,
             c_tm1=layer_outputs[0],
@@ -142,9 +142,9 @@ class TestLSTM(AbstractModel):
             name='output'
         )
 
-        self.read = read
+        self.readlayer = readlayer
         self.output = T.nnet.softmax(layer2.output)
-        self.params = read.params + layer1.params + layer2.params
+        self.params = readlayer.params + layer1.params + layer2.params
         # self.params = layer1.params + layer2.params
         self.lstm_layers = [layer1]
 
@@ -159,7 +159,7 @@ class TestLSTM(AbstractModel):
                                             outputs=[self.output] + hidden_outputs + hidden_states)
         self.train_func = theano.function(
             inputs=[self.input, self.target, self.h_tm1, self.c_tm1],
-            outputs=[self.output, self.loss, self.read.g_x, self.read.g_y, self.read.delta, self.read.sigma_sq] + hidden_outputs + hidden_states,
+            outputs=[self.output, self.loss, self.readlayer.reader.g_x, self.readlayer.reader.g_y, self.readlayer.reader.delta, self.readlayer.reader.sigma_sq] + hidden_outputs + hidden_states,
             updates=updates
         )
         print("Done!")
