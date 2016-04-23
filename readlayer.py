@@ -8,12 +8,11 @@ from reader import Reader
 
 class ReadLayer(object):
 
-    def __init__(self, rng, h, h_shape, image, image_shape, N, name='Default_readlayer'):
+    def __init__(self, rng, h_shape, image_shape, N, name='Default_readlayer'):
         print('Building layer: ' + name)
 
         self.lin_transform = HiddenLayer(
             rng,
-            input=h.flatten(),
             n_in=h_shape[0] * h_shape[1],
             n_out=5,
             activation=None,
@@ -21,11 +20,13 @@ class ReadLayer(object):
 
         self.reader = Reader(
             rng,
-            l=self.lin_transform.output,
-            image=image,
             image_shape=image_shape,
             N=N,
             name='readlayer: reader')
 
-        self.output = self.reader.glimpse
         self.params = self.lin_transform.params
+
+    def one_step(self, h, image):
+        linear = self.lin_transform.one_step(h)
+        read, g_x, g_y, delta, sigma_sq = self.reader.one_step(linear, image)
+        return read, g_x, g_y, delta, sigma_sq

@@ -5,6 +5,7 @@ from hiddenlayer import HiddenLayer
 from convpoollayer import ConvPoolLayer
 from LSTMLayer import LSTMLayer
 from readlayer import ReadLayer
+from adam import Adam
 
 import pdb
 
@@ -12,8 +13,8 @@ rng = np.random.RandomState(23455)
 
 
 class AbstractModel():
-    def get_grads(self):
-        return T.grad(self.loss, self.params)
+    def get_grads(self, loss):
+        return T.grad(loss, self.params)
 
     def compile(self, updates):
         print("Compiling function")
@@ -101,93 +102,151 @@ class TestConvModel(AbstractModel):
 
 class TestLSTM(AbstractModel):
 
-    def __init__(self, input, input_dims, target):
-        self.input = input
-        self.target = target
+    def __init__(self, input_dims, learning_rate):
+        self.input = T.tensor3(name='input', dtype=theano.config.floatX)
+        self.target = T.matrix(name="target", dtype=theano.config.floatX)
         self.h_tm1 = T.matrix(name="hidden_output", dtype=theano.config.floatX)
         self.c_tm1 = T.matrix(name="hidden_state", dtype=theano.config.floatX)
-        self.hidden_output = None
-        self.hidden_state = None
-        num_in = input_dims[0] * input_dims[1]
+        self.learning_rate = learning_rate
 
-        self.lstm_layer_sizes = [100]
-        layer_outputs = self.deserialize(self.h_tm1)
-        layer_states = self.deserialize(self.c_tm1)
-        readlayer = ReadLayer(
+        self.lstm_layer_sizes = [256]
+        self.read_layer = ReadLayer(
             rng,
-            h=layer_outputs[0],
             h_shape=(self.lstm_layer_sizes[0], 1),
-            image=self.input,
             image_shape=input_dims,
             N=12,
             name='Read Layer'
         )
 
-        layer1 = LSTMLayer(
+        self.lstm_layer1 = LSTMLayer(
             rng,
-            input=readlayer.output.reshape((144, 1)),
-            # input=self.input.reshape((num_in, 1)),
             n_in=144,
-            c_tm1=layer_outputs[0],
-            h_tm1=layer_states[0],
             n_out=self.lstm_layer_sizes[0],
             name='LSTM1'
         )
-        layer2 = HiddenLayer(
+
+        self.output_layer = HiddenLayer(
             rng,
-            input=layer1.output,
-            n_in=100,
+            n_in=self.lstm_layer_sizes[0],
             n_out=10,
-            activation=T.tanh,
+            activation=None,
             name='output'
         )
 
-        self.readlayer = readlayer
-        self.output = T.nnet.softmax(layer2.output)
-        self.params = readlayer.params + layer1.params + layer2.params
-        # self.params = layer1.params + layer2.params
-        self.lstm_layers = [layer1]
+        self.params = self.read_layer.params + self.lstm_layer1.params +\
+            self.output_layer.params
+        self.lstm_layers = [self.lstm_layer1]
 
-    def get_initial_states(self):
-        return [layer.get_initial_state() for layer in self.lstm_layers]
+    def get_predict_output(self, input, h_tm1, c_tm1):
+        h, c, read, g_x, g_y, delta, sigma_sq = self.step_with_att(
+            h_tm1, c_tm1, input)
+        lin_output = self.output_layer.one_step(h)
+        output = T.nnet.softmax(lin_output)
+        return output, h, c, read, g_x, g_y, delta, sigma_sq
 
-    def compile(self, updates):
-        print("Compiling function")
-        hidden_outputs = [layer.output for layer in self.lstm_layers]
-        hidden_states = [layer.C for layer in self.lstm_layers]
-        self.predict_func = theano.function(inputs=[self.input, self.h_tm1, self.c_tm1],
-                                            outputs=[self.output] + hidden_outputs + hidden_states)
+    def get_train_output(self, images, batch_size, n_steps):
+
+        images = images.dimshuffle([1, 0, 2, 3])
+        h0, c0 = self.get_initial_state(batch_size)
+        [h, c], _ = theano.scan(fn=self.recurrent_step,
+                                outputs_info=[
+                                    h0, c0],
+                                sequences=images,
+                                n_steps=n_steps
+                                )
+        lin_output = self.output_layer.one_step(h[-1])
+        return T.nnet.softmax(lin_output)
+
+    def recurrent_step(self, image, h_tm1, c_tm1):
+        read = self.read_layer.one_step(h_tm1, image)[0]
+        read = read.flatten(ndim=2)
+        h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
+        return [h, c]
+
+    def step_with_att(self, h_tm1, c_tm1, image):
+        read, g_x, g_y, delta, sigma_sq = self.read_layer.one_step(
+            h_tm1, image)
+        read = read.flatten(ndim=2)
+        h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
+        return [h, c, read, g_x, g_y, delta, sigma_sq]
+
+    def compile(self, train_batch_size, n_steps=4):
+        print("Compiling functions...")
+        train_input = T.tensor4()
+        train_output = self.get_train_output(train_input,
+                                             train_batch_size,
+                                             n_steps)
+        loss = self.get_NLL_cost(train_output, self.target)
+        updates = Adam(loss, self.params, lr=self.learning_rate)
         self.train_func = theano.function(
-            inputs=[self.input, self.target, self.h_tm1, self.c_tm1],
-            outputs=[self.output, self.loss, self.readlayer.reader.g_x, self.readlayer.reader.g_y, self.readlayer.reader.delta, self.readlayer.reader.sigma_sq] + hidden_outputs + hidden_states,
+            inputs=[train_input, self.target],
+            outputs=[train_output, loss],
             updates=updates
         )
+
+        h_tm1 = T.matrix()
+        c_tm1 = T.matrix()
+        predict_output, h, c, read, g_x, g_y, delta, sigma_sq = \
+            self.get_predict_output(self.input, h_tm1, c_tm1)
+
+        self.predict_func = theano.function(inputs=[self.input, h_tm1, c_tm1],
+                                            outputs=[predict_output,
+                                                     h,
+                                                     c,
+                                                     read,
+                                                     g_x,
+                                                     g_y,
+                                                     delta,
+                                                     sigma_sq])
         print("Done!")
 
     def train(self, x, y):
+        '''
+        x is in the form of [batch, time, height, width]
+        y is [batch, target]
+        '''
+        prediction, loss = self.train_func(x, y)
+        return prediction, loss
 
-        if self.hidden_output is None:
-            self.hidden_output = np.zeros((100, 1), dtype=theano.config.floatX)
-        if self.hidden_state is None:
-            self.hidden_state = np.zeros((100, 1), dtype=theano.config.floatX)
+    def get_initial_state(self, batch_size, shared=True):
+        total_states = reduce(lambda x, y: x + y, self.lstm_layer_sizes)
+        h0 = np.zeros((batch_size, total_states), dtype=theano.config.floatX)
+        c0 = np.zeros((batch_size, total_states), dtype=theano.config.floatX)
+        if shared:
+            h0 = theano.shared(
+                h0,
+                name='h0',
+                borrow=True)
+            c0 = theano.shared(
+                c0,
+                name='c0',
+                borrow=True)
+        return h0, c0
 
-        prediction, loss, px, py, delta, sigma_sq, hidden_output, hidden_state = self.train_func(
-            x, y, self.hidden_output, self.hidden_state)
-        return prediction, loss, px, py, delta, hidden_state
+    def predict(self, x, reset=True):
+        if reset:
+            self.predict_h, self.predict_c = self.get_initial_state(
+                1, shared=False)
 
-    def burn_state(self):
-        self.hidden_state = None
+        if x.shape == 2:
+            x = np.expand_dims(x, axis=0)
 
-    def burn_output(self):
-        self.hidden_output = None
+        prediction, self.predict_h, self.predict_c, read, g_x, g_y, delta, sigma_sq =\
+            self.predict_func(x, self.predict_h, self.predict_c)
 
-    def predict(self, x, max_glimpses=4):
-        hidden_output = np.zeros((100, 1), dtype=theano.config.floatX)
-        hidden_state = np.zeros((100, 1), dtype=theano.config.floatX)
-        for i in range(max_glimpses):
-            prediction, hidden_output, hidden_state = self.predict_func(
-                x, hidden_output, hidden_state)
-        return prediction
+        return prediction, [read, g_x, g_y, delta, sigma_sq]
+
+    def get_NLL_cost(self, output, target):
+        NLL = -T.sum((T.log(output) * target), axis=0)
+        return NLL.mean()
+
+    def get_updates(cost, params, learning_rate):
+        gradients = T.grad(cost, params)
+        updates = updates = [
+            (param_i, param_i - learning_rate * grad_i)
+            for param_i, grad_i in zip(params, gradients)
+        ]
+        return updates
 
     def deserialize(self, hidden):
         result = []

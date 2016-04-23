@@ -1,42 +1,31 @@
+import sys
 import theano
 import theano.tensor as T
 import numpy as np
 import models
 import matplotlib.pyplot as plt
+import pickle
 
-from load_mnist import load_mnist, pad_mnist, movie_mnist
+from load_mnist import load_mnist, pad_mnist, movie_mnist, batch_pad_mnist
 
-learning_rate = 0.00001
+learning_rate = 0.0001
 n_epochs = 10
+batch_size = 10
+sequence_length = 4
+repeat_style = 'still'
+patience = 10
+improvement_threshold = 1.005
 
 
 import pdb
 
+sys.setrecursionlimit(15000) # Needed for pickling
 
 def build_model():
 
-    # instantiate 3D tensor for input
-    input = T.matrix(name='input', dtype=theano.config.floatX)
-    y = T.vector(name="target", dtype=theano.config.floatX)
+    model = models.TestLSTM((100, 100), learning_rate=learning_rate)
 
-    model = models.TestLSTM(input, (100, 100), y)
-
-    NLL = -T.sum(T.log(model.output) * y)
-    L2 = sum([T.sum(T.pow(param, 2)) for param in model.params])
-    #loss = NLL + 0.00001 * L2
-    loss = NLL
-    model.set_loss(loss)
-    gradients = model.get_grads()
-    # train_model is a function that updates the model parameters by
-    # SGD Since this model has many parameters, it would be tedious to
-    # manually create an update rule for each model parameter. We thus
-    # create the updates list by automatically looping over all
-    # (params[i], grads[i]) pairs.
-    updates = [
-        (param_i, param_i - learning_rate * grad_i)
-        for param_i, grad_i in zip(model.params, gradients)
-    ]
-    model.compile(updates)
+    model.compile(train_batch_size=batch_size)
 
     return model
 
@@ -47,48 +36,67 @@ def train_model(model, train_images, train_targets):
     ###############
     print '... training'
 
-    patience = 1
-    improvement_threshold = 1.02
+
 
     # Keep track of statistics
     train_error = []
 
+    num_images=len(train_images)
+
     # Initialize some variables
-    error = None
+    old_loss = None
     improvement = 100
 
     epoch = 0
     done_looping = False
 
+    # frame, tx, ty = pad_mnist(train_images[0])
+    # frame = np.expand_dims(frame, axis=0).repeat(batch_size, axis=0)
+    # frames = np.expand_dims(frame, axis=0).repeat(sequence_length, axis=0)
+    # target = train_targets[0]
+    # target = np.expand_dims(target, axis=0).repeat(batch_size, axis=0)
+
     while (epoch < n_epochs) and (not done_looping):
-        epoch = epoch + 1
+        epoch += 1
+        print('### EPOCH %d ###' % epoch)
         num_correct = 0
-        for i, img in enumerate(train_images):
-            # Reset model
-            model.burn_output()
-            model.burn_state()
 
-            #movie_gen = movie_mnist(img)
-            frame, tx, ty = pad_mnist(img)
-            frame = frame
-            target = train_targets[i]
-            old_error = error
-            for j in range(8):
-                #[frame, tx, ty] = next(movie_gen)
-                prediction, loss, px, py, delta, sigma_sq = model.train(frame, target)
+        for i in range(0, num_images-batch_size, batch_size):
 
-            if np.argmax(prediction) == np.argmax(target):
-                num_correct += 1
+            # Construct training batch
+            train_batch = train_images[i:i+batch_size]
+            train_batch = np.expand_dims(train_images[0], axis=0).repeat(batch_size, axis=0)
+            #train_batch = train_images[0:0+batch_size]
+            train_batch, tx, ty = batch_pad_mnist(train_batch)
+            
+            if repeat_style is 'still':
+                train_batch = np.expand_dims(train_batch, axis=1)
+                train_batch = train_batch.repeat(sequence_length, axis=1)
+            # elif repeat_style is 'movie':
+            # TODO
+            #     # movie_gen = movie_mnist(img)
 
-            if i % 1000 == 0 and i > 0:
-                percent_correct = num_correct / float(1000)
-                print('percent correct: %f' % (percent_correct))
-                print(str(px) + ", " + str(py) + ", " + str(delta))
-                print("target: " + str(tx) + ", " + str(ty))
+            #Construct training target
+            target = train_targets[i:i+batch_size]
+            target = np.expand_dims(train_targets[0], axis=0).repeat(batch_size, axis=0)
+
+            prediction, loss = model.train(train_batch, target)
+
+            for j in range(batch_size):
+                if np.argmax(prediction[j]) == np.argmax(target[j]):
+                    num_correct += 1
+
+            if i % 100 == 0 and i > 0:
+                percent_correct = 100 * num_correct / (100.)
+                print('Examples seen: %d' % ((epoch-1)*num_images + i))
+                print('  Percent correct: %f' % (percent_correct))
+                print('  Last Loss: %f' % (loss))
                 num_correct = 0
 
-            if old_error is not None:
-                improvement = error / old_error
+            if old_loss is not None:
+                improvement = old_loss / loss
+
+            old_loss = loss
             if patience <= epoch and improvement < improvement_threshold:
                 print('Breaking due to low improvement')
                 done_looping = True
@@ -105,11 +113,14 @@ if __name__ == '__main__':
     targets = np.zeros((len(train_labels), 10), dtype=np.uint8)
     for i, label in enumerate(train_labels):
         targets[i, label] = 1
-    # make targets a shared vector
-    ##targets = theano.shared(targets, dtype=theano.config.floatX)
+
     model = build_model()
 
     train_error = train_model(model,
                               train_images,
                               targets)
+
+    ##save model
+    file_name = 'model_t%s_bs%d_sl%d.p' % (repeat_style, batch_size, sequence_length)
+    pickle.dump(model, open( file_name, "wb" ) )
     pdb.set_trace()

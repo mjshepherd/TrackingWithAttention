@@ -6,7 +6,7 @@ import theano.tensor as T
 
 class HiddenLayer(object):
 
-    def __init__(self, rng, input, n_in, n_out, W=None, b=None,
+    def __init__(self, rng, n_in, n_out, W=None, b=None,
                  activation=T.tanh, irange=0.01, name='Default_hidden'):
         """
         Typical hidden layer of a MLP: units are fully-connected and have
@@ -68,18 +68,22 @@ class HiddenLayer(object):
 
         self.W = W
         self.b = b
-
-        lin_output = T.dot(input, self.W) + self.b
-
         if activation is None:
-            self.output = lin_output
+            self.activation = None
         elif activation == 'relu':
             print("setting relu")
-            self.output = self.relu(lin_output)
+            self.activation = self.relu
         else:
-            self.output = activation(lin_output)
+            self.activation = activation
+
         # parameters of the model
         self.params = [self.W, self.b]
 
+    def one_step(self, input):
+        output = T.dot(input, self.W) + self.b
+        if self.activation is not None:
+            output = self.activation(output)
+        return output
+
     def relu(self, x):
-        return theano.tensor.switch(x < 0, 0.01*x, x)
+        return theano.tensor.switch(x < 0, 0.01 * x, x)
