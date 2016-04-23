@@ -8,8 +8,8 @@ import pickle
 
 from load_mnist import load_mnist, pad_mnist, movie_mnist, batch_pad_mnist
 
-learning_rate = 0.0001
-n_epochs = 10
+learning_rate = 0.00008
+n_epochs = 15
 batch_size = 10
 sequence_length = 4
 repeat_style = 'still'
@@ -65,7 +65,7 @@ def train_model(model, train_images, train_targets):
 
             # Construct training batch
             train_batch = train_images[i:i+batch_size]
-            train_batch = np.expand_dims(train_images[0], axis=0).repeat(batch_size, axis=0)
+            #train_batch = np.expand_dims(train_images[0], axis=0).repeat(batch_size, axis=0)
             #train_batch = train_images[0:0+batch_size]
             train_batch, tx, ty = batch_pad_mnist(train_batch)
             
@@ -77,8 +77,9 @@ def train_model(model, train_images, train_targets):
             #     # movie_gen = movie_mnist(img)
 
             #Construct training target
+            #target= train_targets[0:0+batch_size]
             target = train_targets[i:i+batch_size]
-            target = np.expand_dims(train_targets[0], axis=0).repeat(batch_size, axis=0)
+            #target = np.expand_dims(target, axis=0).repeat(batch_size, axis=0)
 
             prediction, loss = model.train(train_batch, target)
 

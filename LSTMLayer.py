@@ -89,12 +89,12 @@ class LSTMLayer(object):
         F_i = T.nnet.sigmoid(
             T.dot(input, self.W[0]) +
             T.dot(h_tm1, self.U[0]) +
-            (c_tm1 * self.V[0]) +
+            (c_tm1 * self.V[0].dimshuffle(['x', 0])) +
             self.B[0].dimshuffle(['x', 0]))
         F_f = T.nnet.sigmoid(
             T.dot(input, self.W[1]) +
             T.dot(h_tm1, self.U[1]) +
-            (c_tm1 * self.V[1]) +
+            (c_tm1 * self.V[1].dimshuffle(['x', 0])) +
             self.B[1].dimshuffle(['x', 0]))
 
         c = F_f * c_tm1 + F_i * T.tanh(
@@ -105,7 +105,7 @@ class LSTMLayer(object):
         F_o = T.nnet.sigmoid(
             T.dot(input, self.W[3]) +
             T.dot(h_tm1, self.U[3]) +
-            (c * self.V[2]) +
+            (c * self.V[2].dimshuffle(['x', 0])) +
             self.B[3].dimshuffle(['x', 0]))
         h = F_o * T.tanh(c)
 
