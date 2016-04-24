@@ -69,9 +69,9 @@ def train_model(model, train_images, train_targets):
             x = y = np.ones((batch_size))*36
             train_batch, tx, ty = batch_pad_mnist(train_batch, out_dim=100, x=x, y=y)
             
-            if repeat_style is 'still':
-                train_batch = np.expand_dims(train_batch, axis=1)
-                train_batch = train_batch.repeat(sequence_length, axis=1)
+            # if repeat_style is 'still':
+            #     train_batch = np.expand_dims(train_batch, axis=1)
+            #     train_batch = train_batch.repeat(sequence_length, axis=1)
             # elif repeat_style is 'movie':
             # TODO
             #     # movie_gen = movie_mnist(img)
