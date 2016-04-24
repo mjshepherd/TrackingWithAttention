@@ -8,10 +8,10 @@ import pickle
 
 from load_mnist import load_mnist, pad_mnist, movie_mnist, batch_pad_mnist
 
-learning_rate = 0.00001
-n_epochs = 2
+learning_rate = 0.001
+n_epochs = 10
 batch_size = 20
-sequence_length = 4
+sequence_length = 10
 repeat_style = 'still'
 patience = 15
 improvement_threshold = 1.005

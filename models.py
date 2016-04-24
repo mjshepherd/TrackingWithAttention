@@ -151,8 +151,7 @@ class TestLSTM(AbstractModel):
         [h, c], _ = theano.scan(fn=self.recurrent_step,
                                 outputs_info=[
                                     h0, c0],
-                                sequences=images,
-                                n_steps=n_steps
+                                sequences=images
                                 )
         lin_output = self.output_layer.one_step(h[-1])
         return T.nnet.softmax(lin_output)
