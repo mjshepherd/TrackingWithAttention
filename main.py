@@ -65,7 +65,7 @@ def train_model(model, train_images, train_targets):
             # Construct training batch
             train_batch = train_images[i:i+batch_size]
             #train_batch = np.expand_dims(train_images[0], axis=0).repeat(batch_size, axis=0)
-            train_batch = train_images[i:i+batch_size]
+            train_batch = train_images[i:i+batch_size]/255.
             x = y = np.ones((batch_size))*36
             train_batch, tx, ty = batch_pad_mnist(train_batch, out_dim=100, x=x, y=y)
             
