@@ -68,7 +68,7 @@ def train_model(model, train_images, train_targets):
             #train_batch = np.expand_dims(train_images[0], axis=0).repeat(batch_size, axis=0)
             train_batch = train_images[i:i+batch_size]/255.
             x = y = np.ones((batch_size))*36
-            train_batch, tx, ty = batch_pad_mnist(train_batch, out_dim=100, x=x, y=y)
+            train_batch, tx, ty = batch_pad_mnist(train_batch, out_dim=100)
             
             # if repeat_style is 'still':
             #     train_batch = np.expand_dims(train_batch, axis=1)
@@ -87,10 +87,10 @@ def train_model(model, train_images, train_targets):
             for j in range(batch_size):
                 if np.argmax(prediction[j]) == np.argmax(target[j]):
                     num_correct += 1
-            tot_loss += loss
+            tot_loss = tot_loss + loss
             if i % 100 == 0 and i > 0:
                 percent_correct = 100 * num_correct / (100.)
-                av_loss = tot_loss/100.
+                av_loss = tot_loss/100.*batch_size
                 print('Examples seen: %d' % ((epoch-1)*num_images + i))
                 print('  Percent correct: %f' % (percent_correct))
                 print('  Loss: %f' % (av_loss))
