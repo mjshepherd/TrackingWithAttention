@@ -73,15 +73,17 @@ class Reader(object):
 if __name__ == "__main__":
     from PIL import Image
     rng = numpy.random.RandomState(23455)
-    N = 12
+    N = 100
     height = 480
     width = 640
     img = Image.open("cat.jpg")
     img = img.convert('L')
     img = img.resize((640, 480))
-    img = numpy.array(img).reshape((1, 480, 640))
+    img = numpy.array(img)
+    img = numpy.asarray([img, img])
 
-    l = numpy.asarray([[0.0, 0.0, 0, 0, 0]], dtype=theano.config.floatX)
+
+    l = numpy.asarray([[0.0, 0.0, 0, 0, 0], [0.5, .5, -1, -.5, 1]], dtype=theano.config.floatX)
     l_ = theano.shared(value=l, name='l', borrow=True)
     l_ = l_.reshape((5, 1))
 
@@ -104,5 +106,7 @@ if __name__ == "__main__":
 
     plt.figure()
     plt.imshow(glimpse[0], cmap='gray')
+    plt.figure()
+    plt.imshow(glimpse[1], cmap='gray')
 
     plt.show()

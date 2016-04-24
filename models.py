@@ -146,18 +146,17 @@ class TestLSTM(AbstractModel):
 
     def get_train_output(self, images, batch_size):
 
-        #images = images.dimshuffle([1, 0, 2, 3])
+        images = images.dimshuffle([1, 0, 2, 3])
         h0, c0 = self.get_initial_state(batch_size)
         [h, c], _ = theano.scan(fn=self.recurrent_step,
                                 outputs_info=[
                                     h0, c0],
-                                non_sequences=images,
-                                n_steps=8
+                                sequences=images,
                                 )
         lin_output = self.output_layer.one_step(h[-1])
         return T.nnet.softmax(lin_output)
 
-    def recurrent_step(self, h_tm1, c_tm1, image):
+    def recurrent_step(self, image, h_tm1, c_tm1):
         read = self.read_layer.one_step(h_tm1, image)[0]
         read = read.flatten(ndim=2)
         h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
@@ -172,7 +171,7 @@ class TestLSTM(AbstractModel):
 
     def compile(self, train_batch_size):
         print("Compiling functions...")
-        train_input = T.tensor3()
+        train_input = T.tensor4()
         train_output = self.get_train_output(train_input,
                                              train_batch_size)
         loss = self.get_NLL_cost(train_output, self.target)

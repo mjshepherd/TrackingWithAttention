@@ -54,7 +54,7 @@ def train_model(model, train_images, train_targets):
     # frame = np.expand_dims(frame, axis=0).repeat(batch_size, axis=0)
     # frames = np.expand_dims(frame, axis=0).repeat(sequence_length, axis=0)
     # target = train_targets[0]
-    # target = np.expand_dims(target, axis=0).repeat(batch_size, axis=0)
+
 
     while (epoch < n_epochs) and (not done_looping):
         epoch += 1
@@ -64,15 +64,14 @@ def train_model(model, train_images, train_targets):
         for i in range(0, num_images-batch_size, batch_size):
 
             # Construct training batch
-            train_batch = train_images[i:i+batch_size]
             #train_batch = np.expand_dims(train_images[0], axis=0).repeat(batch_size, axis=0)
             train_batch = train_images[i:i+batch_size]/255.
             x = y = np.ones((batch_size))*36
             train_batch, tx, ty = batch_pad_mnist(train_batch, out_dim=100)
             
-            # if repeat_style is 'still':
-            #     train_batch = np.expand_dims(train_batch, axis=1)
-            #     train_batch = train_batch.repeat(sequence_length, axis=1)
+            if repeat_style is 'still':
+                train_batch = np.expand_dims(train_batch, axis=1)
+                train_batch = train_batch.repeat(sequence_length, axis=1)
             # elif repeat_style is 'movie':
             # TODO
             #     # movie_gen = movie_mnist(img)
