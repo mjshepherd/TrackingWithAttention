@@ -72,6 +72,8 @@ def train_model(model, train_images, train_targets):
             if repeat_style is 'still':
                 train_batch = np.expand_dims(train_batch, axis=1)
                 train_batch = train_batch.repeat(sequence_length, axis=1)
+
+            pdb.set_trace()
             # elif repeat_style is 'movie':
             # TODO
             #     # movie_gen = movie_mnist(img)
