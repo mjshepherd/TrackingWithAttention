@@ -8,12 +8,12 @@ import pickle
 
 from load_mnist import load_mnist, pad_mnist, movie_mnist, batch_pad_mnist
 
-learning_rate = 0.00008
-n_epochs = 15
-batch_size = 10
+learning_rate = 0.00001
+n_epochs = 2
+batch_size = 20
 sequence_length = 4
 repeat_style = 'still'
-patience = 10
+patience = 15
 improvement_threshold = 1.005
 
 
@@ -60,14 +60,14 @@ def train_model(model, train_images, train_targets):
         epoch += 1
         print('### EPOCH %d ###' % epoch)
         num_correct = 0
-
         for i in range(0, num_images-batch_size, batch_size):
 
             # Construct training batch
             train_batch = train_images[i:i+batch_size]
             #train_batch = np.expand_dims(train_images[0], axis=0).repeat(batch_size, axis=0)
-            #train_batch = train_images[0:0+batch_size]
-            train_batch, tx, ty = batch_pad_mnist(train_batch)
+            train_batch = train_images[i:i+batch_size]
+            x = y = np.ones((batch_size))*36
+            train_batch, tx, ty = batch_pad_mnist(train_batch, out_dim=100, x=x, y=y)
             
             if repeat_style is 'still':
                 train_batch = np.expand_dims(train_batch, axis=1)
@@ -77,8 +77,8 @@ def train_model(model, train_images, train_targets):
             #     # movie_gen = movie_mnist(img)
 
             #Construct training target
-            #target= train_targets[0:0+batch_size]
-            target = train_targets[i:i+batch_size]
+            target= train_targets[i:i+batch_size]
+            #target = train_targets[i:i+batch_size]
             #target = np.expand_dims(target, axis=0).repeat(batch_size, axis=0)
 
             prediction, loss = model.train(train_batch, target)

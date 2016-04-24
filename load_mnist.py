@@ -50,12 +50,12 @@ def batch_pad_mnist(images, out_dim=100, x=None, y=None):
     result = np.zeros((images.shape[0], out_dim, out_dim))
     if x is not None and y is not None:
         for i, image in enumerate(images):
-            result[i], x[i], y[i] = pad_mnist(image, x=x[i], y=y[i])
+            result[i], x[i], y[i] = pad_mnist(image, out_dim=out_dim, x=x[i], y=y[i])
     else:
         x = np.zeros((images.shape[0]))
         y = np.zeros((images.shape[0]))
         for i, image in enumerate(images):
-            result[i], x[i], y[i] = pad_mnist(image)
+            result[i], x[i], y[i] = pad_mnist(image, out_dim=out_dim)
     return result, x, y
 
 def pad_mnist(image, out_dim=100, x=None, y=None):

@@ -16,6 +16,7 @@ class ReadLayer(object):
             n_in=h_shape[0] * h_shape[1],
             n_out=5,
             activation=None,
+            irange=0.0001,
             name='readlayer: linear transformation')
 
         self.reader = Reader(
@@ -30,3 +31,53 @@ class ReadLayer(object):
         linear = self.lin_transform.one_step(h)
         read, g_x, g_y, delta, sigma_sq = self.reader.one_step(linear, image)
         return read, g_x, g_y, delta, sigma_sq
+
+
+
+if __name__ == "__main__":
+    from PIL import Image
+    rng = numpy.random.RandomState(23455)
+    N = 40
+    height = 480
+    width = 640
+    learning_rate = 0.000000001
+    image_shape=(480, 640)
+    h_shape = (1,10)
+    img = Image.open("cat.jpg")
+    img = img.convert('L')
+    img = img.resize((640, 480))
+    img = numpy.array(img).reshape((1,)+image_shape)
+
+    target = img[:, 300:340, 220:260]
+    target_ = T.tensor3()
+    h_ = T.matrix()
+    image_ = T.tensor3()
+
+    readlayer = ReadLayer(
+        rng,
+        h_shape=h_shape,
+        image_shape=image_shape,
+        N=N)
+
+    read, g_x, g_y, delta, sigma_sq = readlayer.one_step(h_, image_)
+
+    params = readlayer.params
+
+    loss = T.sum((read - target_)**2)
+    gradients = T.grad(loss, params)
+    updates = updates = [
+        (param_i, param_i - learning_rate * grad_i)
+        for param_i, grad_i in zip(params, gradients)
+    ]
+
+    train_func = theano.function(inputs=[h_, image_, target_],
+                                outputs=[read, loss, g_x, g_y, delta, sigma_sq],
+                                updates=updates,
+                                allow_input_downcast=True)
+
+    h = numpy.random.random(h_shape)
+    for i in range(100):
+        read, loss, g_x, g_y, delta, sigma_sq = train_func(h, img, target)
+        print('Loss: %f, x: %f, y: %f, delta: %f' % (loss, g_x, g_y, delta))
+        
+

@@ -49,17 +49,31 @@ class Reader(object):
         # Compute Y filter banks##
         F_y = T.exp(-((self.A_ind - mu_y.dimshuffle([0, 1, 'x']))**2) / (
             2 * sigma_sq.dimshuffle([0, 'x', 'x'])))
-        # F_y_div = T.sum(F_y, axis=1)
-        # F_y = (F_y.T / (F_y_div + tol)).T
         F_y = F_y / (F_y.sum(axis=-1).dimshuffle(0, 1, 'x') + tol)
 
-        read = gamma.dimshuffle([0, 'x', 'x']) * T.batched_dot(T.batched_dot(F_y, images), F_x.dimshuffle([0, 2, 1]))
+        read = gamma.dimshuffle([0, 'x', 'x']) * self.my_batched_dot(self.my_batched_dot(F_y, images), F_x.dimshuffle([0, 2, 1]))
         return read, g_x, g_y, delta, sigma_sq
+
+    def my_batched_dot(self, A, B):     
+        """Batched version of dot-product.     
+           
+        For A[dim_1, dim_2, dim_3] and B[dim_1, dim_3, dim_4] this         
+        is \approx equal to:       
+                   
+        for i in range(dim_1):     
+            C[i] = tensor.dot(A[i], B[i])
+           
+        Returns        
+        -------        
+            C : shape (dim_1 \times dim_2 \times dim_4)        
+        """        
+        C = A.dimshuffle([0,1,2,'x']) * B.dimshuffle([0,'x',1,2])      
+        return C.sum(axis=-2)
 
 if __name__ == "__main__":
     from PIL import Image
     rng = numpy.random.RandomState(23455)
-    N = 100
+    N = 12
     height = 480
     width = 640
     img = Image.open("cat.jpg")
@@ -67,7 +81,7 @@ if __name__ == "__main__":
     img = img.resize((640, 480))
     img = numpy.array(img).reshape((1, 480, 640))
 
-    l = numpy.asarray([[0.0, 0.0, -1, 1, 1]], dtype=theano.config.floatX)
+    l = numpy.asarray([[0.0, 0.0, 0, 0, 0]], dtype=theano.config.floatX)
     l_ = theano.shared(value=l, name='l', borrow=True)
     l_ = l_.reshape((5, 1))
 

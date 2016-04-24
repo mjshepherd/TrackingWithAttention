@@ -178,10 +178,12 @@ class TestLSTM(AbstractModel):
                                              n_steps)
         loss = self.get_NLL_cost(train_output, self.target)
         updates = Adam(loss, self.params, lr=self.learning_rate)
+        #updates = self.get_updates(loss, self.params, self.learning_rate)
         self.train_func = theano.function(
             inputs=[train_input, self.target],
             outputs=[train_output, loss],
-            updates=updates
+            updates=updates,
+            allow_input_downcast=True
         )
 
         h_tm1 = T.matrix()
@@ -197,7 +199,8 @@ class TestLSTM(AbstractModel):
                                                      g_x,
                                                      g_y,
                                                      delta,
-                                                     sigma_sq])
+                                                     sigma_sq],
+                                            allow_input_downcast=True)
         print("Done!")
 
     def train(self, x, y):
@@ -228,7 +231,7 @@ class TestLSTM(AbstractModel):
             self.predict_h, self.predict_c = self.get_initial_state(
                 1, shared=False)
 
-        if x.shape == 2:
+        if len(x.shape) == 2:
             x = np.expand_dims(x, axis=0)
 
         prediction, self.predict_h, self.predict_c, read, g_x, g_y, delta, sigma_sq =\
@@ -237,10 +240,10 @@ class TestLSTM(AbstractModel):
         return prediction, [read, g_x, g_y, delta, sigma_sq]
 
     def get_NLL_cost(self, output, target):
-        NLL = -T.sum((T.log(output) * target), axis=0)
+        NLL = -T.sum((T.log(output) * target), axis=1)
         return NLL.mean()
 
-    def get_updates(cost, params, learning_rate):
+    def get_updates(self, cost, params, learning_rate):
         gradients = T.grad(cost, params)
         updates = updates = [
             (param_i, param_i - learning_rate * grad_i)
