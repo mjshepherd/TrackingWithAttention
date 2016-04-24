@@ -60,6 +60,7 @@ def train_model(model, train_images, train_targets):
         epoch += 1
         print('### EPOCH %d ###' % epoch)
         num_correct = 0
+        tot_loss = 0
         for i in range(0, num_images-batch_size, batch_size):
 
             # Construct training batch
@@ -86,12 +87,14 @@ def train_model(model, train_images, train_targets):
             for j in range(batch_size):
                 if np.argmax(prediction[j]) == np.argmax(target[j]):
                     num_correct += 1
-
+            tot_loss += loss
             if i % 100 == 0 and i > 0:
                 percent_correct = 100 * num_correct / (100.)
+                av_loss = tot_loss/100.
                 print('Examples seen: %d' % ((epoch-1)*num_images + i))
                 print('  Percent correct: %f' % (percent_correct))
-                print('  Last Loss: %f' % (loss))
+                print('  Loss: %f' % (av_loss))
+                tot_loss = 0
                 num_correct = 0
 
             if old_loss is not None:
