@@ -63,7 +63,7 @@ class LSTMLayer(object):
             V = [None] * 3
             for i in range(0, 3):
                 V[i] = self.init_weights(
-                    (n_out), name=("V_" + str(i)))
+                    (n_out, n_out), name=("V_" + str(i)))
 
         if B is None:
             B = [None] * 4
@@ -89,24 +89,23 @@ class LSTMLayer(object):
         F_i = T.nnet.sigmoid(
             T.dot(input, self.W[0]) +
             T.dot(h_tm1, self.U[0]) +
-            (c_tm1 * self.V[0].dimshuffle(['x', 0])) +
-            self.B[0].dimshuffle(['x', 0]))
+            T.dot(c_tm1, self.V[0]) +
+            self.B[0])
         F_f = T.nnet.sigmoid(
             T.dot(input, self.W[1]) +
             T.dot(h_tm1, self.U[1]) +
-            (c_tm1 * self.V[1].dimshuffle(['x', 0])) +
-            self.B[1].dimshuffle(['x', 0]))
+            T.dot(c_tm1, self.V[1]) +
+            self.B[1])
 
         c = F_f * c_tm1 + F_i * T.tanh(
             T.dot(input, self.W[2]) +
             T.dot(h_tm1, self.U[2]) +
-            self.B[2].dimshuffle(['x', 0])
-        )
+            self.B[2])
         F_o = T.nnet.sigmoid(
             T.dot(input, self.W[3]) +
             T.dot(h_tm1, self.U[3]) +
-            (c * self.V[2].dimshuffle(['x', 0])) +
-            self.B[3].dimshuffle(['x', 0]))
+            T.dot(c, self.V[2]) +
+            self.B[3])
         h = F_o * T.tanh(c)
 
         return h, c
