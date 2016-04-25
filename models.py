@@ -1,11 +1,13 @@
 import numpy as np
 import theano
 import theano.tensor as T
+from theano_lstm import *
 from hiddenlayer import HiddenLayer
 from convpoollayer import ConvPoolLayer
 from LSTMLayer import LSTMLayer
 from readlayer import ReadLayer
 from adam import Adam
+
 
 import pdb
 
@@ -118,12 +120,18 @@ class TestLSTM(AbstractModel):
             name='Read Layer'
         )
 
-        self.lstm_layer1 = LSTMLayer(
-            rng,
-            n_in=144,
-            n_out=self.lstm_layer_sizes[0],
-            name='LSTM1'
-        )
+        self.lstm_layer1 = LSTM(
+            input_size=144,
+            hidden_size=self.lstm_layer_sizes[0],
+            activation=T.tanh,
+            clip_gradients=False)
+
+        # self.lstm_layer1 = LSTMLayer(
+        #     rng,
+        #     n_in=144,
+        #     n_out=self.lstm_layer_sizes[0],
+        #     name='LSTM1'
+        # )
 
         self.output_layer = HiddenLayer(
             rng,
@@ -138,36 +146,44 @@ class TestLSTM(AbstractModel):
         self.lstm_layers = [self.lstm_layer1]
 
     def get_predict_output(self, input, h_tm1, c_tm1):
-        h, c, read, g_x, g_y, delta, sigma_sq = self.step_with_att(
-            h_tm1, c_tm1, input)
+        in_state = T.concatenate([c_tm1, h_tm1], axis=1)
+        out_state, read, g_x, g_y, delta, sigma_sq = self.step_with_att(
+            in_state, input)
+        h = self.lstm_layer1.postprocess_activation(out_state)
         lin_output = self.output_layer.one_step(h)
         output = T.nnet.softmax(lin_output)
-        return output, h, c, read, g_x, g_y, delta, sigma_sq
+        return output, h, out_state, read, g_x, g_y, delta, sigma_sq
 
     def get_train_output(self, images, batch_size):
 
         images = images.dimshuffle([1, 0, 2, 3])
-        h0, c0 = self.get_initial_state(batch_size)
-        [h, c], _ = theano.scan(fn=self.recurrent_step,
-                                outputs_info=[
-                                    h0, c0],
-                                sequences=images,
-                                )
-        lin_output = self.output_layer.one_step(h[-1])
+        initial_state = self.get_initial_state(batch_size)
+        state, _ = theano.scan(fn=self.recurrent_step,
+                                 outputs_info=initial_state,
+                                 sequences=images,
+                                 )
+        final_state = state[-1]
+        h = self.lstm_layer1.postprocess_activation(final_state)
+        lin_output = self.output_layer.one_step(h)
         return T.nnet.softmax(lin_output)
 
-    def recurrent_step(self, image, h_tm1, c_tm1):
+    def recurrent_step(self, image, state_tm1):
+        h_tm1 = self.lstm_layer1.postprocess_activation(state_tm1)
         read = self.read_layer.one_step(h_tm1, image)[0]
         read = read.flatten(ndim=2)
-        h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
-        return [h, c]
+        # h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
+        lstm_out = self.lstm_layer1.activate(read, state_tm1)
+        return [lstm_out]
 
-    def step_with_att(self, h_tm1, c_tm1, image):
+    def step_with_att(self, state_tm1, image):
+        h_tm1 = self.lstm_layer1.postprocess_activation(state_tm1)
         read, g_x, g_y, delta, sigma_sq = self.read_layer.one_step(
             h_tm1, image)
         read = read.flatten(ndim=2)
-        h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
-        return [h, c, read, g_x, g_y, delta, sigma_sq]
+        #h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
+        lstm_out = self.lstm_layer1.activate(read, state_tm1)
+
+        return [lstm_out, read, g_x, g_y, delta, sigma_sq]
 
     def compile(self, train_batch_size):
         print("Compiling functions...")
@@ -186,13 +202,13 @@ class TestLSTM(AbstractModel):
 
         h_tm1 = T.matrix()
         c_tm1 = T.matrix()
-        predict_output, h, c, read, g_x, g_y, delta, sigma_sq = \
+        predict_output, h, lstm_out, read, g_x, g_y, delta, sigma_sq = \
             self.get_predict_output(self.input, h_tm1, c_tm1)
 
         self.predict_func = theano.function(inputs=[self.input, h_tm1, c_tm1],
                                             outputs=[predict_output,
                                                      h,
-                                                     c,
+                                                     lstm_out,
                                                      read,
                                                      g_x,
                                                      g_y,
@@ -210,19 +226,22 @@ class TestLSTM(AbstractModel):
         return prediction, loss
 
     def get_initial_state(self, batch_size, shared=True):
-        total_states = reduce(lambda x, y: x + y, self.lstm_layer_sizes)
-        h0 = np.zeros((batch_size, total_states), dtype=theano.config.floatX)
-        c0 = np.zeros((batch_size, total_states), dtype=theano.config.floatX)
-        if shared:
-            h0 = theano.shared(
-                h0,
-                name='h0',
-                borrow=True)
-            c0 = theano.shared(
-                c0,
-                name='c0',
-                borrow=True)
-        return h0, c0
+        # total_states = reduce(lambda x, y: x + y, self.lstm_layer_sizes)
+        # h0 = np.zeros((batch_size, total_states), dtype=theano.config.floatX)
+        # c0 = np.zeros((batch_size, total_states), dtype=theano.config.floatX)
+        # if shared:
+        #     h0 = theano.shared(
+        #         h0,
+        #         name='h0',
+        #         borrow=True)
+        #     c0 = theano.shared(
+        #         c0,
+        #         name='c0',
+        #         borrow=True)
+        # return h0, c0
+        initial_state = self.lstm_layer1.initial_hidden_state
+        initial_state = initial_state.dimshuffle(['x', 0]).repeat(batch_size, axis=0)
+        return initial_state
 
     def predict(self, x, reset=True):
         if reset:

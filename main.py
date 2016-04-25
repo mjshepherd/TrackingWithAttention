@@ -19,7 +19,8 @@ improvement_threshold = 1.005
 
 import pdb
 
-sys.setrecursionlimit(15000) # Needed for pickling
+sys.setrecursionlimit(15000)  # Needed for pickling
+
 
 def build_model():
 
@@ -36,12 +37,10 @@ def train_model(model, train_images, train_targets):
     ###############
     print '... training'
 
-
-
     # Keep track of statistics
     train_error = []
 
-    num_images=len(train_images)
+    num_images = len(train_images)
 
     # Initialize some variables
     old_loss = None
@@ -55,31 +54,29 @@ def train_model(model, train_images, train_targets):
     # frames = np.expand_dims(frame, axis=0).repeat(sequence_length, axis=0)
     # target = train_targets[0]
 
-
     while (epoch < n_epochs) and (not done_looping):
         epoch += 1
         print('### EPOCH %d ###' % epoch)
         num_correct = 0
         tot_loss = 0
-        for i in range(0, num_images-batch_size, batch_size):
+        for i in range(0, num_images - batch_size, batch_size):
 
             # Construct training batch
             #train_batch = np.expand_dims(train_images[0], axis=0).repeat(batch_size, axis=0)
-            train_batch = train_images[i:i+batch_size]/255.
-            x = y = np.ones((batch_size))*36
+            train_batch = train_images[i:i + batch_size] / 255.
+            x = y = np.ones((batch_size)) * 36
             train_batch, tx, ty = batch_pad_mnist(train_batch, out_dim=100)
-            
+
             if repeat_style is 'still':
                 train_batch = np.expand_dims(train_batch, axis=1)
                 train_batch = train_batch.repeat(sequence_length, axis=1)
 
-            pdb.set_trace()
             # elif repeat_style is 'movie':
             # TODO
-            #     # movie_gen = movie_mnist(img)
+            # movie_gen = movie_mnist(img)
 
-            #Construct training target
-            target= train_targets[i:i+batch_size]
+            # Construct training target
+            target = train_targets[i:i + batch_size]
             #target = train_targets[i:i+batch_size]
             #target = np.expand_dims(target, axis=0).repeat(batch_size, axis=0)
 
@@ -91,8 +88,8 @@ def train_model(model, train_images, train_targets):
             tot_loss = tot_loss + loss
             if i % 100 == 0 and i > 0:
                 percent_correct = 100 * num_correct / (100.)
-                av_loss = tot_loss/100.*batch_size
-                print('Examples seen: %d' % ((epoch-1)*num_images + i))
+                av_loss = tot_loss / 100. * batch_size
+                print('Examples seen: %d' % ((epoch - 1) * num_images + i))
                 print('  Percent correct: %f' % (percent_correct))
                 print('  Loss: %f' % (av_loss))
                 tot_loss = 0
@@ -125,7 +122,8 @@ if __name__ == '__main__':
                               train_images,
                               targets)
 
-    ##save model
-    file_name = 'model_t%s_bs%d_sl%d.p' % (repeat_style, batch_size, sequence_length)
-    pickle.dump(model, open( file_name, "wb" ) )
+    # save model
+    file_name = 'model_t%s_bs%d_sl%d.p' % (
+        repeat_style, batch_size, sequence_length)
+    pickle.dump(model, open(file_name, "wb"))
     pdb.set_trace()
