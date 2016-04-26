@@ -122,9 +122,9 @@ class TestLSTM(AbstractModel):
 
         self.f_g = HiddenLayer(
             rng,
-            n_in=12 * 12 + self.lstm_layer_sizes[0],
+            n_in=12 * 12 + self.lstm_layer_sizes[0] + 4,
             n_out=500,
-            activation='relu',
+            activation=T.nnet.sigmoid,
             name='gangsta_func')
 
         self.lstm_layer1 = LSTM(
@@ -176,9 +176,13 @@ class TestLSTM(AbstractModel):
 
     def recurrent_step(self, image, state_tm1):
         h_tm1 = self.lstm_layer1.postprocess_activation(state_tm1)
-        read = self.read_layer.one_step(h_tm1, image)[0]
+        read, g_x, g_y, delta, sigma = self.read_layer.one_step(h_tm1, image)
         read = read.flatten(ndim=2)
-        hidden_rep = self.f_g.one_step(T.concatenate([read, h_tm1], axis=1))
+        hidden_rep = self.f_g.one_step(T.concatenate([read, h_tm1, g_x.dimshuffle([0, 'x']),
+                                                      g_y.dimshuffle([0, 'x']),
+                                                      delta.dimshuffle(
+                                                          [0, 'x']),
+                                                      sigma.dimshuffle([0, 'x'])], axis=1))
         # h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
         lstm_out = self.lstm_layer1.activate(hidden_rep, state_tm1)
         return [lstm_out]
