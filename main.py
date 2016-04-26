@@ -8,13 +8,14 @@ import pickle
 
 from load_mnist import load_mnist, pad_mnist, movie_mnist, batch_pad_mnist
 
-learning_rate = 0.001
+learning_rate = 0.0001
 n_epochs = 10
 batch_size = 20
 sequence_length = 10
 repeat_style = 'still'
 patience = 15
 improvement_threshold = 1.005
+report_freq = 100.
 
 
 import pdb
@@ -59,7 +60,7 @@ def train_model(model, train_images, train_targets):
         print('### EPOCH %d ###' % epoch)
         num_correct = 0
         tot_loss = 0
-        for i in range(0, num_images - batch_size, batch_size):
+        for i in range(0, num_images - batch_size+1, batch_size):
 
             # Construct training batch
             #train_batch = np.expand_dims(train_images[0], axis=0).repeat(batch_size, axis=0)
@@ -86,9 +87,9 @@ def train_model(model, train_images, train_targets):
                 if np.argmax(prediction[j]) == np.argmax(target[j]):
                     num_correct += 1
             tot_loss = tot_loss + loss
-            if i % 100 == 0 and i > 0:
-                percent_correct = 100 * num_correct / (100.)
-                av_loss = tot_loss / 100. * batch_size
+            if i % report_freq == 0 and i > 0:
+                percent_correct = 100 * num_correct / (report_freq)
+                av_loss = tot_loss / report_freq * batch_size
                 print('Examples seen: %d' % ((epoch - 1) * num_images + i))
                 print('  Percent correct: %f' % (percent_correct))
                 print('  Loss: %f' % (av_loss))

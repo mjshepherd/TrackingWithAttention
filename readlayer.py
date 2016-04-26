@@ -2,6 +2,7 @@ import numpy
 
 import theano
 import theano.tensor as T
+from attention import ZoomableAttentionWindow
 from hiddenlayer import HiddenLayer
 from reader import Reader
 
@@ -19,36 +20,44 @@ class ReadLayer(object):
             irange=0.00001,
             name='readlayer: linear transformation')
 
-        self.reader = Reader(
-            rng,
-            image_shape=image_shape,
-            N=N,
-            name='readlayer: reader')
+        self.zoomable_window = ZoomableAttentionWindow(
+            channels=1,
+            img_height=100,
+            img_width=100,
+            N=12)
+        # self.reader = Reader(
+        #     rng,
+        #     image_shape=image_shape,
+        #     N=N,
+        #     name='readlayer: reader')
 
         self.params = self.lin_transform.params
 
     def one_step(self, h, image):
         linear = self.lin_transform.one_step(h)
-        read, g_x, g_y, delta, sigma_sq = self.reader.one_step(linear, image)
-        return read, g_x, g_y, delta, sigma_sq
 
+        g_y, g_x, delta, sigma, gamma = self.zoomable_window.nn2att(
+            linear)
+        read = self.zoomable_window.read(image, g_y, g_x, delta, sigma)
+        read = read*gamma
+        return read, g_x, g_y, delta, sigma
 
 
 if __name__ == "__main__":
     from PIL import Image
-    import matplotlib.pyplot as plt 
+    import matplotlib.pyplot as plt
     rng = numpy.random.RandomState(23455)
     N = 100
     height = 480
     width = 640
     learning_rate = 0.000001
-    image_shape=(480, 640)
-    h_shape = (1,10)
+    image_shape = (480, 640)
+    h_shape = (1, 10)
     img = Image.open("cat.jpg")
     img = img.convert('L')
     img = img.resize((640, 480))
-    img = numpy.array(img).reshape((1,)+image_shape)
-    img = img/255.
+    img = numpy.array(img).reshape((1,) + image_shape)
+    img = img / 255.
 
     target = img[:, 140:240, 280:380]
     target_ = T.tensor3()
@@ -73,20 +82,20 @@ if __name__ == "__main__":
     ]
 
     train_func = theano.function(inputs=[h_, image_, target_],
-                                outputs=[read, loss, g_x, g_y, delta, sigma_sq],
-                                updates=updates,
-                                allow_input_downcast=True)
+                                 outputs=[
+                                     read, loss, g_x, g_y, delta, sigma_sq],
+                                 updates=updates,
+                                 allow_input_downcast=True)
 
     h = numpy.random.random(h_shape) * 0
     for i in range(50):
         read, loss, g_x, g_y, delta, sigma_sq = train_func(h, img, target)
         print('Loss: %f, x: %f, y: %f, delta: %f' % (loss, g_x, g_y, delta))
 
-
     plt.figure()
     plt.imshow(img[0], cmap='gray')
     plt.figure()
     plt.imshow(target[0], cmap='gray')
     plt.figure()
-    plt.imshow(read[0], cmap='gray')       
+    plt.imshow(read[0], cmap='gray')
     plt.show()

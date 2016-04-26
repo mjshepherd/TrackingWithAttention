@@ -120,8 +120,15 @@ class TestLSTM(AbstractModel):
             name='Read Layer'
         )
 
+        self.f_g = HiddenLayer(
+            rng,
+            n_in=12 * 12 + self.lstm_layer_sizes[0],
+            n_out=500,
+            activation='relu',
+            name='gangsta_func')
+
         self.lstm_layer1 = LSTM(
-            input_size=144,
+            input_size=500,
             hidden_size=self.lstm_layer_sizes[0],
             activation=T.tanh,
             clip_gradients=False)
@@ -142,7 +149,7 @@ class TestLSTM(AbstractModel):
         )
 
         self.params = self.read_layer.params + self.lstm_layer1.params +\
-            self.output_layer.params
+            self.output_layer.params + self.f_g.params
         self.lstm_layers = [self.lstm_layer1]
 
     def get_predict_output(self, input, h_tm1, c_tm1):
@@ -159,9 +166,9 @@ class TestLSTM(AbstractModel):
         images = images.dimshuffle([1, 0, 2, 3])
         initial_state = self.get_initial_state(batch_size)
         state, _ = theano.scan(fn=self.recurrent_step,
-                                 outputs_info=initial_state,
-                                 sequences=images,
-                                 )
+                               outputs_info=initial_state,
+                               sequences=images,
+                               )
         final_state = state[-1]
         h = self.lstm_layer1.postprocess_activation(final_state)
         lin_output = self.output_layer.one_step(h)
@@ -171,8 +178,9 @@ class TestLSTM(AbstractModel):
         h_tm1 = self.lstm_layer1.postprocess_activation(state_tm1)
         read = self.read_layer.one_step(h_tm1, image)[0]
         read = read.flatten(ndim=2)
+        hidden_rep = self.f_g.one_step(T.concatenate([read, h_tm1], axis=1))
         # h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
-        lstm_out = self.lstm_layer1.activate(read, state_tm1)
+        lstm_out = self.lstm_layer1.activate(hidden_rep, state_tm1)
         return [lstm_out]
 
     def step_with_att(self, state_tm1, image):
@@ -240,7 +248,8 @@ class TestLSTM(AbstractModel):
         #         borrow=True)
         # return h0, c0
         initial_state = self.lstm_layer1.initial_hidden_state
-        initial_state = initial_state.dimshuffle(['x', 0]).repeat(batch_size, axis=0)
+        initial_state = initial_state.dimshuffle(
+            ['x', 0]).repeat(batch_size, axis=0)
         return initial_state
 
     def predict(self, x, reset=True):
