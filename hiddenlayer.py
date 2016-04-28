@@ -71,7 +71,6 @@ class HiddenLayer(object):
         if activation is None:
             self.activation = None
         elif activation == 'relu':
-            print("setting relu")
             self.activation = self.relu
         else:
             self.activation = activation
