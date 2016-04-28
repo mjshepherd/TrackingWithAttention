@@ -32,10 +32,6 @@ class Reader(object):
         g_y = self.A * (l[:, 1] + 1) / 2.
         delta = (max(self.A, self.B) - 1) / (self.N - 1) * T.exp(l[:, 2])
         sigma_sq = T.exp(l[:, 3])
-        gamma = T.exp(l[:, 4])
-        # g_x = g_x.reshape((self.batches, 1))
-        # g_y = g_y.reshape((self.batches, 1))
-        # delta = delta.reshape((self.batches, 1))
 
         mu_x = g_x.dimshuffle([0, 'x']) +\
             (self.mu_ind - self.N / 2. + 0.5) * delta.dimshuffle([0, 'x'])
@@ -51,7 +47,7 @@ class Reader(object):
             2 * sigma_sq.dimshuffle([0, 'x', 'x'])))
         F_y = F_y / (F_y.sum(axis=-1).dimshuffle(0, 1, 'x') + tol)
 
-        read = gamma.dimshuffle([0, 'x', 'x']) * T.batched_dot(T.batched_dot(F_y, images), F_x.dimshuffle([0, 2, 1]))
+        read = T.batched_dot(T.batched_dot(F_y, images), F_x.dimshuffle([0, 2, 1]))
         return read, g_x, g_y, delta, sigma_sq
 
 
@@ -68,7 +64,7 @@ if __name__ == "__main__":
     img = numpy.asarray([img, img])
 
 
-    l = numpy.asarray([[0.0, 0.0, 0, 0, 0], [0.0, -.3, -2.0, -2, 1]], dtype=theano.config.floatX)
+    l = numpy.asarray([[0.0, 0.0, 0, 0], [0.0, -.3, -2.0, -2]], dtype=theano.config.floatX)
     l_ = theano.shared(value=l, name='l', borrow=True)
     l_ = l_.reshape((5, 1))
 

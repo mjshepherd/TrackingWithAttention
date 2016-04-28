@@ -196,8 +196,8 @@ class TestLSTM(AbstractModel):
     def compile(self, train_batch_size):
         print("Compiling functions...")
         train_input = T.tensor4()
-        target_y = T.vector()
-        target_x = T.vector()
+        target_y = T.matrix()
+        target_x = T.matrix()
         train_output, g_y, g_x = self.get_train_output(train_input,
                                              train_batch_size)
         classification_loss = self.get_NLL_cost(train_output, self.target)
@@ -273,8 +273,8 @@ class TestLSTM(AbstractModel):
         NLL = -T.sum((T.log(output) * target), axis=1)
         return NLL.mean()
 
-    def get_tracking_loss(self, g_y, g_x, target_y, target_x):
-        loss = ((target_y - g_y) ** 2) + ((target_x - g_x) ** 2)
+    def get_tracking_cost(self, g_y, g_x, target_y, target_x):
+        loss = ((target_y - g_y.dimshuffle([1, 0])) ** 2) + ((target_x - g_x.dimshuffle([1, 0])) ** 2)
         return loss.mean()
 
     def get_updates(self, cost, params, learning_rate):

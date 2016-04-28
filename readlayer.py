@@ -15,7 +15,7 @@ class ReadLayer(object):
         self.lin_transform = HiddenLayer(
             rng,
             n_in=h_shape[0] * h_shape[1],
-            n_out=5,
+            n_out=4,
             activation=None,
             irange=0.00001,
             name='readlayer: linear transformation')
