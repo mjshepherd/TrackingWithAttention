@@ -111,7 +111,7 @@ class TestLSTM(AbstractModel):
         self.c_tm1 = T.matrix(name="hidden_state", dtype=theano.config.floatX)
         self.learning_rate = learning_rate
 
-        N=12
+        N = 12
 
         self.lstm_layer_sizes = [256]
         self.read_layer = ReadLayer(
@@ -124,22 +124,21 @@ class TestLSTM(AbstractModel):
 
         self.f_g = HiddenLayer(
             rng,
-            n_in=N*N + self.lstm_layer_sizes[0],
+            n_in=N * N + self.lstm_layer_sizes[0],
             n_out=500,
             activation='relu',
             name='gangsta_func')
 
-
         self.f_p1 = HiddenLayer(
             rng,
-            n_in=N*N,
+            n_in=N * N,
             n_out=200,
             activation='relu',
             name='read_interpreter')
 
         self.merge_layer = HiddenLayer(
             rng,
-            n_in=200+self.lstm_layer_sizes[0],
+            n_in=200 + self.lstm_layer_sizes[0],
             n_out=200,
             activation='relu',
             name='read_merge')
@@ -160,12 +159,14 @@ class TestLSTM(AbstractModel):
         )
 
         self.params = self.read_layer.params + self.lstm_layer1.params +\
-            self.output_layer.params + self.f_p1 + self.merge_layer
+            self.output_layer.params + \
+            self.merge_layer.params + self.f_p1.params
         self.lstm_layers = [self.lstm_layer1]
 
     def get_predict_output(self, input, h_tm1, c_tm1):
 
-        h, c, read, g_x, g_y, delta, sigma_sq = self.step_with_att(h_tm1, c_tm1, input)
+        h, c, read, g_x, g_y, delta, sigma_sq = self.step_with_att(
+            h_tm1, c_tm1, input)
         lin_output = self.output_layer.one_step(h)
         output = T.nnet.softmax(lin_output)
         return output, h, c, read, g_x, g_y, delta, sigma_sq
@@ -175,9 +176,10 @@ class TestLSTM(AbstractModel):
         images = images.dimshuffle([1, 0, 2, 3])
         h0, c0 = self.get_initial_state(batch_size)
         [h, c, output, g_y, g_x], _ = theano.scan(fn=self.recurrent_step,
-                               outputs_info=[h0, c0, None, None, None],
-                               sequences=images,
-                               )
+                                                  outputs_info=[
+                                                      h0, c0, None, None, None],
+                                                  sequences=images,
+                                                  )
         return output, g_y, g_x
 
     def recurrent_step(self, image, h_tm1, c_tm1):
@@ -185,7 +187,8 @@ class TestLSTM(AbstractModel):
         read = read.flatten(ndim=2)
         h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
         proc_read = self.f_p1.one_step(read)
-        merged = self.merge_layer.one_step(T.concatenate([proc_read, h], axis=1))
+        merged = self.merge_layer.one_step(
+            T.concatenate([proc_read, h], axis=1))
         lin_output = self.output_layer.one_step(merged)
         output = T.nnet.softmax(lin_output)
         return [h, c, output, g_y, g_x]
@@ -204,10 +207,10 @@ class TestLSTM(AbstractModel):
         target_y = T.matrix()
         target_x = T.matrix()
         train_output, g_y, g_x = self.get_train_output(train_input,
-                                             train_batch_size)
+                                                       train_batch_size)
         classification_loss = self.get_NLL_cost(train_output, self.target)
         tracking_loss = self.get_tracking_cost(g_y, g_x, target_y, target_x)
-        loss = 5*classification_loss + tracking_loss
+        loss = 5 * classification_loss + tracking_loss
         updates = Adam(loss, self.params, lr=self.learning_rate)
         #updates = self.get_updates(loss, self.params, self.learning_rate)
         self.train_func = theano.function(
@@ -279,7 +282,8 @@ class TestLSTM(AbstractModel):
         return NLL.mean()
 
     def get_tracking_cost(self, g_y, g_x, target_y, target_x):
-        loss = ((target_y - g_y.dimshuffle([1, 0])) ** 2) + ((target_x - g_x.dimshuffle([1, 0])) ** 2)
+        loss = (
+            (target_y - g_y.dimshuffle([1, 0])) ** 2) + ((target_x - g_x.dimshuffle([1, 0])) ** 2)
         loss = T.sqrt(loss + 1e-4)
         return loss.mean()
 

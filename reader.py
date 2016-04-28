@@ -30,8 +30,8 @@ class Reader(object):
         tol = 1e-4
         g_x = self.B * (l[:, 0] + 1) / 2.
         g_y = self.A * (l[:, 1] + 1) / 2.
-        delta = (max(self.A, self.B) - 1) / (self.N - 1) * T.abs(l[:, 2])
-        sigma_sq = T.abs(l[:, 3])
+        delta = (max(self.A, self.B) - 1) / (self.N - 1) * T.exp(l[:, 2])
+        sigma_sq = T.exp(l[:, 3])
 
         mu_x = g_x.dimshuffle([0, 'x']) +\
             (self.mu_ind - self.N / 2. + 0.5) * delta.dimshuffle([0, 'x'])

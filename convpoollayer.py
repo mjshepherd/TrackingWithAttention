@@ -71,7 +71,7 @@ class ConvPoolLayer(object):
         # keep track of model input
         self.input = input
 
-    def one_step(self, input)
+    def one_step(self, input):
         # convolve input feature maps with filters
         conv_out = conv.conv2d(
             input=input,

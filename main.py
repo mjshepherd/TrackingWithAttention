@@ -60,16 +60,17 @@ def train_model(model, train_images, train_targets):
         print('### EPOCH %d ###' % epoch)
         num_correct = 0
         tot_loss = 0
-        for i in range(0, num_images - batch_size+1, batch_size):
+        for i in range(0, num_images - batch_size + 1, batch_size):
 
             # Construct training batch
             #train_batch = np.expand_dims(train_images[0], axis=0).repeat(batch_size, axis=0)
             train_batch = train_images[i:i + batch_size] / 255.
             x = y = np.ones((batch_size)) * 36
             train_batch, tx, ty = batch_pad_mnist(train_batch, out_dim=100)
-            tx = np.expand_dims(tx, axis=1).repeat(sequence_length, axis=1) + 14
-            ty = np.expand_dims(ty, axis=1).repeat(sequence_length, axis=1) + 14
-
+            tx = np.expand_dims(tx, axis=1).repeat(
+                sequence_length, axis=1) + 14
+            ty = np.expand_dims(ty, axis=1).repeat(
+                sequence_length, axis=1) + 14
 
             if repeat_style is 'still':
                 train_batch = np.expand_dims(train_batch, axis=1)
@@ -85,7 +86,6 @@ def train_model(model, train_images, train_targets):
             #target = np.expand_dims(target, axis=0).repeat(batch_size, axis=0)
 
             prediction, loss = model.train(train_batch, target, ty, tx)
-
             for j in range(batch_size):
                 if np.argmax(prediction[j]) == np.argmax(target[j]):
                     num_correct += 1
