@@ -36,7 +36,6 @@ def Adam(cost, params, lr=0.0002, b1=0.1, b2=0.001, e=1e-8):
     fix2 = 1. - (1. - b2)**i_t
     lr_t = lr * (T.sqrt(fix2) / fix1)
     for p, g in zip(params, grads):
-        g = g.clip(1.0, -1.0)
         m = theano.shared(p.get_value() * 0.)
         v = theano.shared(p.get_value() * 0.)
         m_t = (b1 * g) + ((1. - b1) * m)
