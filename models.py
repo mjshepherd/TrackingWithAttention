@@ -122,9 +122,9 @@ class TestLSTM(AbstractModel):
 
         self.f_g = HiddenLayer(
             rng,
-            n_in=12 * 12 + self.lstm_layer_sizes[0] + 4,
+            n_in=12 * 12 + self.lstm_layer_sizes[0],
             n_out=500,
-            activation=T.nnet.sigmoid,
+            activation='relu',
             name='gangsta_func')
 
         self.lstm_layer1 = LSTM(
@@ -165,27 +165,23 @@ class TestLSTM(AbstractModel):
 
         images = images.dimshuffle([1, 0, 2, 3])
         initial_state = self.get_initial_state(batch_size)
-        state, _ = theano.scan(fn=self.recurrent_step,
-                               outputs_info=initial_state,
+        [state, g_y, g_x], _ = theano.scan(fn=self.recurrent_step,
+                               outputs_info=[initial_state, None, None],
                                sequences=images,
                                )
         final_state = state[-1]
         h = self.lstm_layer1.postprocess_activation(final_state)
         lin_output = self.output_layer.one_step(h)
-        return T.nnet.softmax(lin_output)
+        return T.nnet.softmax(lin_output), g_y, g_x
 
     def recurrent_step(self, image, state_tm1):
         h_tm1 = self.lstm_layer1.postprocess_activation(state_tm1)
         read, g_x, g_y, delta, sigma = self.read_layer.one_step(h_tm1, image)
         read = read.flatten(ndim=2)
-        hidden_rep = self.f_g.one_step(T.concatenate([read, h_tm1, g_x.dimshuffle([0, 'x']),
-                                                      g_y.dimshuffle([0, 'x']),
-                                                      delta.dimshuffle(
-                                                          [0, 'x']),
-                                                      sigma.dimshuffle([0, 'x'])], axis=1))
+        hidden_rep = self.f_g.one_step(T.concatenate([read, h_tm1], axis=1))
         # h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
         lstm_out = self.lstm_layer1.activate(hidden_rep, state_tm1)
-        return [lstm_out]
+        return [lstm_out, g_y, g_x]
 
     def step_with_att(self, state_tm1, image):
         h_tm1 = self.lstm_layer1.postprocess_activation(state_tm1)
@@ -200,13 +196,17 @@ class TestLSTM(AbstractModel):
     def compile(self, train_batch_size):
         print("Compiling functions...")
         train_input = T.tensor4()
-        train_output = self.get_train_output(train_input,
+        target_y = T.vector()
+        target_x = T.vector()
+        train_output, g_y, g_x = self.get_train_output(train_input,
                                              train_batch_size)
-        loss = self.get_NLL_cost(train_output, self.target)
+        classification_loss = self.get_NLL_cost(train_output, self.target)
+        tracking_loss = self.get_tracking_cost(g_y, g_x, target_y, target_x)
+        loss = classification_loss + tracking_loss
         updates = Adam(loss, self.params, lr=self.learning_rate)
         #updates = self.get_updates(loss, self.params, self.learning_rate)
         self.train_func = theano.function(
-            inputs=[train_input, self.target],
+            inputs=[train_input, self.target, target_y, target_x],
             outputs=[train_output, loss],
             updates=updates,
             allow_input_downcast=True
@@ -229,12 +229,12 @@ class TestLSTM(AbstractModel):
                                             allow_input_downcast=True)
         print("Done!")
 
-    def train(self, x, y):
+    def train(self, x, y, target_y, target_x):
         '''
         x is in the form of [batch, time, height, width]
         y is [batch, target]
         '''
-        prediction, loss = self.train_func(x, y)
+        prediction, loss = self.train_func(x, y, target_y, target_x)
         return prediction, loss
 
     def get_initial_state(self, batch_size, shared=True):
@@ -272,6 +272,10 @@ class TestLSTM(AbstractModel):
     def get_NLL_cost(self, output, target):
         NLL = -T.sum((T.log(output) * target), axis=1)
         return NLL.mean()
+
+    def get_tracking_loss(self, g_y, g_x, target_y, target_x):
+        loss = ((target_y - g_y) ** 2) + ((target_x - g_x) ** 2)
+        return loss.mean()
 
     def get_updates(self, cost, params, learning_rate):
         gradients = T.grad(cost, params)

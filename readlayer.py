@@ -20,27 +20,24 @@ class ReadLayer(object):
             irange=0.00001,
             name='readlayer: linear transformation')
 
-        self.zoomable_window = ZoomableAttentionWindow(
-            channels=1,
-            img_height=100,
-            img_width=100,
-            N=12)
-        # self.reader = Reader(
-        #     rng,
-        #     image_shape=image_shape,
-        #     N=N,
-        #     name='readlayer: reader')
+        # self.zoomable_window = ZoomableAttentionWindow(
+        #     channels=1,
+        #     img_height=100,
+        #     img_width=100,
+        #     N=12)
+        self.reader = Reader(
+            rng,
+            image_shape=image_shape,
+            N=N,
+            name='readlayer: reader')
 
         self.params = self.lin_transform.params
 
     def one_step(self, h, image):
         linear = self.lin_transform.one_step(h)
 
-        g_y, g_x, delta, sigma, gamma = self.zoomable_window.nn2att(
-            linear)
-        read = self.zoomable_window.read(image, g_y, g_x, delta, sigma)
-        read = read*gamma
-        return read, g_x, g_y, delta, sigma
+        read, g_x, g_y, delta, sigma_sq = self.reader.one_step(linear, image)
+        return read, g_x, g_y, delta, sigma_sq
 
 
 if __name__ == "__main__":

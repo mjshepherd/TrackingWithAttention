@@ -28,8 +28,8 @@ class Reader(object):
         '''
 
         tol = 1e-4
-        g_x = (self.B / 2.) * (l[:, 0] + 1)
-        g_y = (self.A / 2.) * (l[:, 1] + 1)
+        g_x = self.B * (l[:, 0] + 1) / 2.
+        g_y = self.A * (l[:, 1] + 1) / 2.
         delta = (max(self.A, self.B) - 1) / (self.N - 1) * T.exp(l[:, 2])
         sigma_sq = T.exp(l[:, 3])
         gamma = T.exp(l[:, 4])
