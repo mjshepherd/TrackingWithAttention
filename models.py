@@ -152,15 +152,14 @@ class TestLSTM(AbstractModel):
 
         self.output_layer = HiddenLayer(
             rng,
-            n_in=200,
+            n_in=200 + 256,
             n_out=10,
             activation=None,
             name='output'
         )
 
         self.params = self.read_layer.params + self.lstm_layer1.params +\
-            self.output_layer.params + \
-            self.merge_layer.params + self.f_p1.params
+            self.output_layer.params +  self.f_p1.params
         self.lstm_layers = [self.lstm_layer1]
 
     def get_predict_output(self, input, h_tm1, c_tm1):
@@ -187,9 +186,7 @@ class TestLSTM(AbstractModel):
         read = read.flatten(ndim=2)
         h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
         proc_read = self.f_p1.one_step(read)
-        merged = self.merge_layer.one_step(
-            T.concatenate([proc_read, h], axis=1))
-        lin_output = self.output_layer.one_step(merged)
+        lin_output = self.output_layer.one_step(T.concatenate([proc_read, h_tm1], axis=1))
         output = T.nnet.softmax(lin_output)
         return [h, c, output, g_y, g_x]
 
