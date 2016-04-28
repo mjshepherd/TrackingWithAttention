@@ -129,7 +129,7 @@ class TestLSTM(AbstractModel):
 
         self.lstm_layer1 = LSTMLayer(
             rng,
-            n_in=5*5*20,
+            n_in=144,
             n_out=self.lstm_layer_sizes[0],
             name='LSTM1'
         )
@@ -142,7 +142,7 @@ class TestLSTM(AbstractModel):
 
         self.output_layer = HiddenLayer(
             rng,
-            n_in=self.lstm_layer_sizes[1],
+            n_in=self.lstm_layer_sizes[1] + 5*5*20,
             n_out=10,
             activation=None,
             name='output'
@@ -173,8 +173,8 @@ class TestLSTM(AbstractModel):
 
     def recurrent_step(self, image, h_tm1, c_tm1):
         read, g_x, g_y, delta, sigma = self.read_layer.one_step(h_tm1, image)
-        conv = self.conv_layer.one_step(read.dimshuffle([0, 'x', 1, 2]))
-        conv = conv.flatten(ndim=2)
+        
+        read = read.flatten(ndim=2)
 
         h_1, c_1 =\
             self.lstm_layer1.one_step(conv,
@@ -185,7 +185,9 @@ class TestLSTM(AbstractModel):
                                       h_tm1[:, self.lstm_layer_sizes[0]:],
                                       c_tm1[:, self.lstm_layer_sizes[0]:]
                                       )
-        lin_output = self.output_layer.one_step(h_2)
+        conv = self.conv_layer.one_step(read.dimshuffle([0, 'x', 1, 2]))
+        conv = conv.flatten(ndim=2)
+        lin_output = self.output_layer.one_step(T.concatenate([h_2, conv] axis=1))
         output = T.nnet.softmax(lin_output)
 
         h = T.concatenate([h_1, h_2], axis=1)
@@ -209,7 +211,7 @@ class TestLSTM(AbstractModel):
                                                        train_batch_size)
         classification_loss = self.get_NLL_cost(train_output, self.target)
         tracking_loss = self.get_tracking_cost(g_y, g_x, target_y, target_x)
-        loss = 5 * classification_loss + tracking_loss
+        loss = 10 * classification_loss + tracking_loss
         updates = Adam(loss, self.params, lr=self.learning_rate)
         # updates = self.get_updates(loss, self.params, self.learning_rate)
         self.train_func = theano.function(
