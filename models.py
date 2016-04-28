@@ -150,7 +150,7 @@ class TestLSTM(AbstractModel):
 
         self.lstm_layer1 = LSTMLayer(
             rng,
-            n_in=500,
+            n_in=144,
             n_out=self.lstm_layer_sizes[0],
             name='LSTM1'
         )
@@ -187,10 +187,10 @@ class TestLSTM(AbstractModel):
     def recurrent_step(self, image, h_tm1, c_tm1):
         read, g_x, g_y, delta, sigma = self.read_layer.one_step(h_tm1, image)
         read = read.flatten(ndim=2)
-        hidden_rep = self.f_g.one_step(T.concatenate([read, h_tm1], axis=1))
-        h, c = self.lstm_layer1.one_step(hidden_rep, h_tm1, c_tm1)
+        # hidden_rep = self.f_g.one_step(T.concatenate([read, h_tm1], axis=1))
+        h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
         proc_read = self.f_p1.one_step(read)
-        merged = self.merge_layer.one_step(T.concatenate([proc_read, h_tm1], axis=1))
+        merged = self.merge_layer.one_step(T.concatenate([proc_read, h], axis=1))
         lin_output = self.output_layer.one_step(merged)
         output = T.nnet.softmax(lin_output)
         return [h, c, output, g_y, g_x]
