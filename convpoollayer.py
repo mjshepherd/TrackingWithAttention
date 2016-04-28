@@ -35,6 +35,7 @@ class ConvPoolLayer(object):
         self.filter_shape = filter_shape
         self.input_shape = input_shape
         self.poolsize = poolsize
+        self.border_mode = border_mode
         self.output_shape = (input_shape[0],
                              filter_shape[0],
                              (input_shape[2] -
@@ -76,14 +77,14 @@ class ConvPoolLayer(object):
         conv_out = conv.conv2d(
             input=input,
             filters=self.W,
-            filter_shape=filter_shape,
-            image_shape=input_shape,
-            border_mode=border_mode
+            filter_shape=self.filter_shape,
+            image_shape=self.input_shape,
+            border_mode=self.border_mode
         )
         # downsample each feature map individually, using maxpooling
         pooled_out = downsample.max_pool_2d(
             input=conv_out,
-            ds=poolsize,
+            ds=self.poolsize,
             ignore_border=True
         )
         # add the bias term. Since the bias is a vector (1D array), we first

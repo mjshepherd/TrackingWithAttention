@@ -121,10 +121,15 @@ class TestLSTM(AbstractModel):
             N=N,
             name='Read Layer'
         )
+        self.conv_layer = ConvPoolLayer(
+            rng,
+            filter_shape=(20, 1, 3, 3),
+            input_shape=(50, 1, 12, 12),
+        )
 
         self.lstm_layer1 = LSTMLayer(
             rng,
-            n_in=144,
+            n_in=5*5*20,
             n_out=self.lstm_layer_sizes[0],
             name='LSTM1'
         )
@@ -168,10 +173,11 @@ class TestLSTM(AbstractModel):
 
     def recurrent_step(self, image, h_tm1, c_tm1):
         read, g_x, g_y, delta, sigma = self.read_layer.one_step(h_tm1, image)
-        read = read.flatten(ndim=2)
+        conv = self.conv_layer.one_step(read.dimshuffle([0, 'x', 1, 2]))
+        conv = conv.flatten(ndim=2)
 
         h_1, c_1 =\
-            self.lstm_layer1.one_step(read,
+            self.lstm_layer1.one_step(conv,
                                       h_tm1[:, 0:self.lstm_layer_sizes[0]],
                                       c_tm1[:, 0:self.lstm_layer_sizes[0]])
         h_2, c_2 =\
