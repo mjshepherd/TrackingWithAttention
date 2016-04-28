@@ -20,11 +20,6 @@ class ReadLayer(object):
             irange=0.00001,
             name='readlayer: linear transformation')
 
-        # self.zoomable_window = ZoomableAttentionWindow(
-        #     channels=1,
-        #     img_height=100,
-        #     img_width=100,
-        #     N=12)
         self.reader = Reader(
             rng,
             image_shape=image_shape,

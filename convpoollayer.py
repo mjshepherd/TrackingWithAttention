@@ -8,7 +8,7 @@ class ConvPoolLayer(object):
 
     """Pool Layer of a convolutional network """
 
-    def __init__(self, rng, input, filter_shape, input_shape, poolsize=(2, 2), border_mode='valid',
+    def __init__(self, rng, filter_shape, input_shape, poolsize=(2, 2), border_mode='valid',
                  name='Default_Convolution'):
         """
 
@@ -32,7 +32,6 @@ class ConvPoolLayer(object):
         print('Building layer: ' + name)
 
         assert input_shape[1] == filter_shape[1]
-        self.input = input
         self.filter_shape = filter_shape
         self.input_shape = input_shape
         self.poolsize = poolsize
@@ -65,6 +64,14 @@ class ConvPoolLayer(object):
         b_values = numpy.zeros((filter_shape[0],), dtype=theano.config.floatX)
         self.b = theano.shared(value=b_values, borrow=True)
 
+
+        # store parameters of this layer
+        self.params = [self.W, self.b]
+
+        # keep track of model input
+        self.input = input
+
+    def one_step(self, input)
         # convolve input feature maps with filters
         conv_out = conv.conv2d(
             input=input,
@@ -73,26 +80,17 @@ class ConvPoolLayer(object):
             image_shape=input_shape,
             border_mode=border_mode
         )
-
         # downsample each feature map individually, using maxpooling
         pooled_out = downsample.max_pool_2d(
             input=conv_out,
             ds=poolsize,
             ignore_border=True
         )
-
         # add the bias term. Since the bias is a vector (1D array), we first
         # reshape it to a tensor of shape (1, n_filters, 1, 1). Each bias will
         # thus be broadcasted across mini-batches and feature map
         # width & height
-        self.output = theano.tensor.tanh(
-            pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
-
-        # store parameters of this layer
-        self.params = [self.W, self.b]
-
-        # keep track of model input
-        self.input = input
+        return theano.tensor.tanh(pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
 
     def relu(self, x):
         return theano.tensor.switch(x < 0, 0.01*x, x)

@@ -129,11 +129,7 @@ class TestLSTM(AbstractModel):
             activation='relu',
             name='gangsta_func')
 
-        # self.lstm_layer1 = LSTM(
-        #     input_size=500,
-        #     hidden_size=self.lstm_layer_sizes[0],
-        #     activation=T.tanh,
-        #     clip_gradients=False)
+
         self.f_p1 = HiddenLayer(
             rng,
             n_in=N*N,
@@ -157,14 +153,14 @@ class TestLSTM(AbstractModel):
 
         self.output_layer = HiddenLayer(
             rng,
-            n_in=256,
+            n_in=200,
             n_out=10,
             activation=None,
             name='output'
         )
 
         self.params = self.read_layer.params + self.lstm_layer1.params +\
-            self.output_layer.params
+            self.output_layer.params + self.f_p1 + self.merge_layer
         self.lstm_layers = [self.lstm_layer1]
 
     def get_predict_output(self, input, h_tm1, c_tm1):
@@ -187,11 +183,10 @@ class TestLSTM(AbstractModel):
     def recurrent_step(self, image, h_tm1, c_tm1):
         read, g_x, g_y, delta, sigma = self.read_layer.one_step(h_tm1, image)
         read = read.flatten(ndim=2)
-        # hidden_rep = self.f_g.one_step(T.concatenate([read, h_tm1], axis=1))
         h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
-        #proc_read = self.f_p1.one_step(read)
-        #merged = self.merge_layer.one_step(T.concatenate([proc_read, h], axis=1))
-        lin_output = self.output_layer.one_step(h)
+        proc_read = self.f_p1.one_step(read)
+        merged = self.merge_layer.one_step(T.concatenate([proc_read, h], axis=1))
+        lin_output = self.output_layer.one_step(merged)
         output = T.nnet.softmax(lin_output)
         return [h, c, output, g_y, g_x]
 
@@ -212,7 +207,7 @@ class TestLSTM(AbstractModel):
                                              train_batch_size)
         classification_loss = self.get_NLL_cost(train_output, self.target)
         tracking_loss = self.get_tracking_cost(g_y, g_x, target_y, target_x)
-        loss = classification_loss + tracking_loss
+        loss = 5*classification_loss + tracking_loss
         updates = Adam(loss, self.params, lr=self.learning_rate)
         #updates = self.get_updates(loss, self.params, self.learning_rate)
         self.train_func = theano.function(
@@ -285,7 +280,7 @@ class TestLSTM(AbstractModel):
 
     def get_tracking_cost(self, g_y, g_x, target_y, target_x):
         loss = ((target_y - g_y.dimshuffle([1, 0])) ** 2) + ((target_x - g_x.dimshuffle([1, 0])) ** 2)
-        loss = T.sqrt(loss)
+        loss = T.sqrt(loss + 1e-4)
         return loss.mean()
 
     def get_updates(self, cost, params, learning_rate):
