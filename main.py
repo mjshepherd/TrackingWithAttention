@@ -9,7 +9,7 @@ import pickle
 from load_mnist import load_mnist, pad_mnist, movie_mnist, batch_pad_mnist
 
 learning_rate = 0.0001
-n_epochs = 1
+n_epochs = 20
 batch_size = 50
 sequence_length = 10
 repeat_style = 'still'
