@@ -213,7 +213,7 @@ class TestLSTM(AbstractModel):
         target_x = T.matrix()
         train_output, g_y, g_x = self.get_train_output(train_input,
                                                        train_batch_size)
-        classification_loss = self.get_NLL_cost(train_output, self.target)
+        classification_loss = self.get_NLL_cost(train_output[-1], self.target)
         tracking_loss = self.get_tracking_cost(g_y, g_x, target_y, target_x)
         loss = 5 * classification_loss + tracking_loss
         updates = Adam(loss, self.params, lr=self.learning_rate)
@@ -283,7 +283,7 @@ class TestLSTM(AbstractModel):
         return prediction, [read, g_x, g_y, delta, sigma_sq]
 
     def get_NLL_cost(self, output, target):
-        NLL = -T.sum((T.log(output) * target), axis=2)
+        NLL = -T.sum((T.log(output) * target), axis=1)
         return NLL.mean()
 
     def get_tracking_cost(self, g_y, g_x, target_y, target_x):

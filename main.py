@@ -17,6 +17,7 @@ patience = 15
 improvement_threshold = 1.005
 report_freq = 100.
 
+file_name = 'model_t%s_bs%d_sl%d_ep%d.p' % (repeat_style, batch_size, sequence_length, n_epochs)
 
 import pdb
 
@@ -116,8 +117,6 @@ def train_model(model, train_images, train_targets):
                 print('Breaking due to low improvement')
                 done_looping = True
                 break
-            break
-        break
 
     print('Optimization complete.')
 
@@ -137,8 +136,6 @@ if __name__ == '__main__':
                               train_images,
                               targets)
 
-    # save model
-    file_name = 'model_t%s_bs%d_sl%d.p' % (
-        repeat_style, batch_size, sequence_length)
+
     pickle.dump(model, open(file_name, "wb"))
     pdb.set_trace()

@@ -31,7 +31,7 @@ class Reader(object):
         g_x = self.B * (l[:, 0] + 1) / 2.
         g_y = self.A * (l[:, 1] + 1) / 2.
         delta = (max(self.A, self.B) - 1) / (self.N - 1) * T.exp(l[:, 2])
-        sigma_sq = T.exp(l[:, 3])
+        sigma = T.exp(l[:, 3])
 
         mu_x = g_x.dimshuffle([0, 'x']) +\
             (self.mu_ind - self.N / 2. + 0.5) * delta.dimshuffle([0, 'x'])
@@ -39,16 +39,16 @@ class Reader(object):
             (self.mu_ind - self.N / 2. + 0.5) * delta.dimshuffle([0, 'x'])
 
         F_x = T.exp(-((self.B_ind - mu_x.dimshuffle([0, 1, 'x']))**2) / (
-            2 * sigma_sq.dimshuffle([0, 'x', 'x'])))
+            2 * (sigma.dimshuffle([0, 'x', 'x'])))**2)
         F_x = F_x / (F_x.sum(axis=-1).dimshuffle(0, 1, 'x') + tol)
 
         # Compute Y filter banks##
         F_y = T.exp(-((self.A_ind - mu_y.dimshuffle([0, 1, 'x']))**2) / (
-            2 * sigma_sq.dimshuffle([0, 'x', 'x'])))
+            2 * (sigma.dimshuffle([0, 'x', 'x'])))**2)
         F_y = F_y / (F_y.sum(axis=-1).dimshuffle(0, 1, 'x') + tol)
 
         read = T.batched_dot(T.batched_dot(F_y, images), F_x.dimshuffle([0, 2, 1]))
-        return read, g_x, g_y, delta, sigma_sq
+        return read, g_x, g_y, delta, sigma
 
 
 if __name__ == "__main__":
