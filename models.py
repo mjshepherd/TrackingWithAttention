@@ -124,12 +124,12 @@ class TestLSTM(AbstractModel):
         self.conv_layer = ConvPoolLayer(
             rng,
             filter_shape=(20, 1, 3, 3),
-            input_shape=(50, 1, 12, 12),
+            input_shape=(50, 1, N, N),
         )
 
         self.lstm_layer1 = LSTMLayer(
             rng,
-            n_in=144,
+            n_in=N*N,
             n_out=self.lstm_layer_sizes[0],
             name='LSTM1'
         )
@@ -140,25 +140,16 @@ class TestLSTM(AbstractModel):
             name='LSTM2'
         )
 
-        self.fc_layer1 = HiddenLayer(
-            rng,
-            n_in=self.lstm_layer_sizes[0] + self.lstm_layer_sizes[1] + 5*5*20,
-            n_out=100,
-            activation='relu',
-            name='FC1'
-        )
         self.output_layer = HiddenLayer(
             rng,
-            n_in=100,
+            n_in=self.lstm_layer_sizes[0] + self.lstm_layer_sizes[1] + 5*5*20,
             n_out=10,
             activation=None,
             name='output'
         )
 
         self.params = self.read_layer.params + self.lstm_layer1.params +\
-            self.lstm_layer2.params + self.output_layer.params +\
-            self.fc_layer1.params
-        self.lstm_layers = [self.lstm_layer1]
+            self.lstm_layer2.params + self.output_layer.params
 
     def get_predict_output(self, input, h_tm1, c_tm1):
 
@@ -197,8 +188,7 @@ class TestLSTM(AbstractModel):
         c = T.concatenate([c_1, c_2], axis=1)
         conv = self.conv_layer.one_step(read.dimshuffle([0, 'x', 1, 2]))
         conv = conv.flatten(ndim=2)
-        fc_output = self.fc_layer1.one_step(T.concatenate([h_1, h_2, conv], axis=1))
-        lin_output = self.output_layer.one_step(fc_output)
+        lin_output = self.output_layer.one_step(T.concatenate([h_1, h_2, conv], axis=1))
         output = T.nnet.softmax(lin_output)
         return [h, c, output, g_y, g_x]
 
