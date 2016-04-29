@@ -124,7 +124,7 @@ class TestLSTM(AbstractModel):
         self.conv_layer = ConvPoolLayer(
             rng,
             filter_shape=(30, 1, 3, 3),
-            input_shape=(batch_size, 1, N, N),
+            input_shape=(1, N, N),
         )
 
         self.lstm_layer1 = LSTMLayer(
@@ -153,25 +153,23 @@ class TestLSTM(AbstractModel):
 
     def get_predict_output(self, input, h_tm1, c_tm1):
 
-        h, c, read, g_x, g_y, delta, sigma_sq = self.step_with_att(
-            h_tm1, c_tm1, input)
-        lin_output = self.output_layer.one_step(h)
-        output = T.nnet.softmax(lin_output)
+        h, c, output, g_y, g_x, read, delta, sigma_sq = self.recurrent_step(input,
+            h_tm1, c_tm1)
         return output, h, c, read, g_x, g_y, delta, sigma_sq
 
     def get_train_output(self, images, batch_size):
 
         images = images.dimshuffle([1, 0, 2, 3])
         h0, c0 = self.get_initial_state(batch_size)
-        [h, c, output, g_y, g_x], _ = theano.scan(fn=self.recurrent_step,
+        [h, c, output, g_y, g_x, _, _, _], _ = theano.scan(fn=self.recurrent_step,
                                                   outputs_info=[
-                                                      h0, c0, None, None, None],
+                                                      h0, c0, None, None, None, None, None, None],
                                                   sequences=images,
                                                   )
         return output, g_y, g_x
 
     def recurrent_step(self, image, h_tm1, c_tm1):
-        read, g_x, g_y, delta, sigma = self.read_layer.one_step(h_tm1, image)
+        read, g_x, g_y, delta, sigma_sq = self.read_layer.one_step(h_tm1, image)
         
         read_ = read.flatten(ndim=2)
 
@@ -190,13 +188,21 @@ class TestLSTM(AbstractModel):
         conv = conv.flatten(ndim=2)
         lin_output = self.output_layer.one_step(T.concatenate([h_1, h_2, conv], axis=1))
         output = T.nnet.softmax(lin_output)
-        return [h, c, output, g_y, g_x]
+        return [h, c, output, g_y, g_x, read, delta, sigma_sq]
 
     def step_with_att(self, h_tm1, c_tm1, image):
         read, g_x, g_y, delta, sigma_sq = self.read_layer.one_step(
             h_tm1, image)
-        read = read.flatten(ndim=2)
-        h, c = self.lstm_layer1.one_step(read, h_tm1, c_tm1)
+        read_ = read_.flatten(ndim=2)
+        h_1, c_1 =\
+            self.lstm_layer1.one_step(read_,
+                                      h_tm1[:, 0:self.lstm_layer_sizes[0]],
+                                      c_tm1[:, 0:self.lstm_layer_sizes[0]])
+        h_2, c_2 =\
+            self.lstm_layer2.one_step(h_1,
+                                      h_tm1[:, self.lstm_layer_sizes[0]:],
+                                      c_tm1[:, self.lstm_layer_sizes[0]:]
+                                      )
 
         return [h, c, read, g_x, g_y, delta, sigma_sq]
 

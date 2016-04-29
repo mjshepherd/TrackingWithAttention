@@ -12,7 +12,7 @@ learning_rate = 0.0001
 n_epochs = 20
 batch_size = 50
 sequence_length = 10
-repeat_style = 'movie'
+repeat_style = 'still'
 patience = 15
 improvement_threshold = 1.005
 report_freq = 100.
@@ -20,7 +20,7 @@ report_freq = 100.
 
 import pdb
 
-sys.setrecursionlimit(15000)  # Needed for pickling
+sys.setrecursionlimit(30000)  # Needed for pickling
 
 
 def build_model():
@@ -72,7 +72,7 @@ def train_model(model, train_images, train_targets):
                 train_batch, tx, ty = batch_pad_mnist(train_batch, out_dim=100)
                 tx = np.expand_dims(tx, axis=0).repeat(
                     sequence_length, axis=0) + 14
-                ty = np.expand_dims(ty, axis=1).repeat(
+                ty = np.expand_dims(ty, axis=0).repeat(
                     sequence_length, axis=0) + 14
                 train_batch = np.expand_dims(train_batch, axis=1)
                 train_batch = train_batch.repeat(sequence_length, axis=1)
@@ -116,13 +116,15 @@ def train_model(model, train_images, train_targets):
                 print('Breaking due to low improvement')
                 done_looping = True
                 break
+            break
+        break
 
     print('Optimization complete.')
 
     return train_error
 
 if __name__ == '__main__':
-    train_images, train_labels = load_mnist(dataset="testing", path="mnist")
+    train_images, train_labels = load_mnist(dataset="training", path="mnist")
 
     # convert labels to one-hot encoding
     targets = np.zeros((len(train_labels), 10), dtype=np.uint8)

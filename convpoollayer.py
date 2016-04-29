@@ -23,7 +23,7 @@ class ConvPoolLayer(object):
                               filter height, filter width)
 
         :type input_shape: tuple or list of length 4
-        :param input_shape: (batch size, num input feature maps,
+        :param input_shape: (num input feature maps,
                              image height, image width)
 
         :type poolsize: tuple or list of length 2
@@ -31,17 +31,17 @@ class ConvPoolLayer(object):
         """
         print('Building layer: ' + name)
 
-        assert input_shape[1] == filter_shape[1]
+        assert input_shape[0] == filter_shape[1]
         self.filter_shape = filter_shape
         self.input_shape = input_shape
         self.poolsize = poolsize
         self.border_mode = border_mode
         self.output_shape = (input_shape[0],
                              filter_shape[0],
-                             (input_shape[2] -
+                             (input_shape[1] -
                               filter_shape[2] + 1) / poolsize[0],
-                             (input_shape[3] - filter_shape[3] + 1) / poolsize[1])
-        print("ConvLayer Output: " + str(self.output_shape))
+                             (input_shape[2] - filter_shape[3] + 1) / poolsize[1])
+        print("ConvLayer Output Shape: " + str(self.output_shape))
 
         # there are "num input feature maps * filter height * filter width"
         # inputs to each hidden unit
@@ -78,7 +78,7 @@ class ConvPoolLayer(object):
             input=input,
             filters=self.W,
             filter_shape=self.filter_shape,
-            image_shape=self.input_shape,
+            image_shape=None,
             border_mode=self.border_mode
         )
         # downsample each feature map individually, using maxpooling

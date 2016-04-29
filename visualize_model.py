@@ -7,7 +7,7 @@ import pickle
 import pdb
 
 
-model_name = "model_tstill_bs1_sl10.p"
+model_name = "model_tstill_bs50_sl10.p"
 N = 12
 
 from load_mnist import load_mnist, pad_mnist, movie_mnist, batch_pad_mnist
