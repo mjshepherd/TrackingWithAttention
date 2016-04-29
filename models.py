@@ -104,7 +104,7 @@ class TestConvModel(AbstractModel):
 
 class TestLSTM(AbstractModel):
 
-    def __init__(self, input_dims, learning_rate):
+    def __init__(self, input_dims, learning_rate, batch_size):
         self.input = T.tensor3(name='input', dtype=theano.config.floatX)
         self.target = T.matrix(name="target", dtype=theano.config.floatX)
         self.h_tm1 = T.matrix(name="hidden_output", dtype=theano.config.floatX)
@@ -123,8 +123,8 @@ class TestLSTM(AbstractModel):
         )
         self.conv_layer = ConvPoolLayer(
             rng,
-            filter_shape=(20, 1, 3, 3),
-            input_shape=(50, 1, N, N),
+            filter_shape=(30, 1, 3, 3),
+            input_shape=(batch_size, 1, N, N),
         )
 
         self.lstm_layer1 = LSTMLayer(
@@ -142,7 +142,7 @@ class TestLSTM(AbstractModel):
 
         self.output_layer = HiddenLayer(
             rng,
-            n_in=self.lstm_layer_sizes[0] + self.lstm_layer_sizes[1] + 5*5*20,
+            n_in=self.lstm_layer_sizes[0] + self.lstm_layer_sizes[1] + 5*5*30,
             n_out=10,
             activation=None,
             name='output'
@@ -282,7 +282,7 @@ class TestLSTM(AbstractModel):
 
     def get_tracking_cost(self, g_y, g_x, target_y, target_x):
         loss = (
-            (target_y - g_y.dimshuffle([1, 0])) ** 2) + ((target_x - g_x.dimshuffle([1, 0])) ** 2)
+            (target_y - g_y) ** 2) + ((target_x - g_x) ** 2)
         loss = T.sqrt(loss + 1e-4)
         return loss.mean()
 

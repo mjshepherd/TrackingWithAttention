@@ -12,7 +12,7 @@ learning_rate = 0.0001
 n_epochs = 20
 batch_size = 50
 sequence_length = 10
-repeat_style = 'still'
+repeat_style = 'movie'
 patience = 15
 improvement_threshold = 1.005
 report_freq = 100.
@@ -25,7 +25,7 @@ sys.setrecursionlimit(15000)  # Needed for pickling
 
 def build_model():
 
-    model = models.TestLSTM((100, 100), learning_rate=learning_rate)
+    model = models.TestLSTM((100, 100), learning_rate=learning_rate, batch_size=batch_size)
 
     model.compile(train_batch_size=batch_size)
 
@@ -65,20 +65,29 @@ def train_model(model, train_images, train_targets):
             # Construct training batch
             #train_batch = np.expand_dims(train_images[0], axis=0).repeat(batch_size, axis=0)
             train_batch = train_images[i:i + batch_size] / 255.
-            x = y = np.ones((batch_size)) * 36
-            train_batch, tx, ty = batch_pad_mnist(train_batch, out_dim=100)
-            tx = np.expand_dims(tx, axis=1).repeat(
-                sequence_length, axis=1) + 14
-            ty = np.expand_dims(ty, axis=1).repeat(
-                sequence_length, axis=1) + 14
+
 
             if repeat_style is 'still':
+                x = y = np.ones((batch_size)) * 36
+                train_batch, tx, ty = batch_pad_mnist(train_batch, out_dim=100)
+                tx = np.expand_dims(tx, axis=0).repeat(
+                    sequence_length, axis=0) + 14
+                ty = np.expand_dims(ty, axis=1).repeat(
+                    sequence_length, axis=0) + 14
                 train_batch = np.expand_dims(train_batch, axis=1)
                 train_batch = train_batch.repeat(sequence_length, axis=1)
 
-            # elif repeat_style is 'movie':
-            # TODO
-            # movie_gen = movie_mnist(img)
+            elif repeat_style is 'movie':
+                movie_gen = movie_mnist(train_batch)
+                plc = np.zeros((sequence_length, batch_size, 100, 100))
+                tx = np.zeros((sequence_length, batch_size))
+                ty = np.zeros((sequence_length, batch_size))
+                
+                for j in range(sequence_length):
+                    plc[j], tx[j], ty[j] = movie_gen.next()
+                train_batch = np.swapaxes(plc, 0, 1)
+                tx += 14
+                ty += 14
 
             # Construct training target
             target = train_targets[i:i + batch_size]

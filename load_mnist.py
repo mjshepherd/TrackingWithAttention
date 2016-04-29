@@ -61,34 +61,37 @@ def batch_pad_mnist(images, out_dim=100, x=None, y=None):
 def pad_mnist(image, out_dim=100, x=None, y=None):
     
     if x is None:
-        x = np.ceil(np.random.random() * (out_dim - image.shape[0]))
+        x = np.ceil(np.random.random() * (out_dim - image.shape[1]))
     if y is None:
-        y = np.ceil(np.random.random() * (out_dim - image.shape[1]))
+        y = np.ceil(np.random.random() * (out_dim - image.shape[0]))
 
     x = x.astype(int)
     y = y.astype(int)
 
     result = np.zeros((out_dim, out_dim), dtype=theano.config.floatX)
-    result[x:(x + image.shape[0]), y:(y + image.shape[1])] = image
+    result[y:(y + image.shape[1]), x:(x + image.shape[0])] = image
 
     return result, x, y
 
 
 def movie_mnist(image, out_dim=100, speed=10, variation=2):
-    speed = np.random.rand() * variation + speed
-    direction = np.random.rand() * np.pi * 2
-    dX = math.floor(np.cos(direction) * speed)
-    dY = math.floor(np.sin(direction) * speed)
-    effectiveX = (out_dim - image.shape[0])
+    batch_size = image.shape[0]
+    speed = np.random.random((batch_size)) * variation + speed
+    direction = np.random.random((batch_size)) * np.pi * 2
+    dX = np.floor(np.cos(direction) * speed)
+    dY = np.floor(np.sin(direction) * speed)
+    effectiveX = (out_dim - image.shape[2])
     effectiveY = (out_dim - image.shape[1])
 
-    X = math.floor(np.random.rand() * effectiveX)
-    Y = math.floor(np.random.rand() * effectiveY)
+    X = np.floor(np.random.random((batch_size)) * effectiveX)
+    Y = np.floor(np.random.random((batch_size)) * effectiveY)
     while True:
-        if X + dX > (effectiveX-1) or X + dX < 0:
-            dX = -dX
-        if Y + dY > (effectiveY-1) or Y + dY < 0:
-            dY = -dY
+        dX[X+dX > (effectiveX-1)] = -dX[X+dX > (effectiveX-1)]
+        dX[X+dX < 0] = -dX[X+dX < 0]
+
+        dY[Y+dY > (effectiveY-1)] = -dY[Y+dY > (effectiveY-1)]
+        dY[Y+dY < 0] = -dY[Y+dY < 0]
+
         X = X + dX
         Y = Y + dY
-        yield(pad_mnist(image, out_dim, x=X, y=Y))
+        yield(batch_pad_mnist(image, out_dim, x=X, y=Y))
