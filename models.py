@@ -11,7 +11,7 @@ from adam import Adam
 
 import pdb
 
-rng = np.random.RandomState(23455)
+rng = np.random.RandomState(142292)
 
 
 class AbstractModel():
@@ -140,16 +140,24 @@ class TestLSTM(AbstractModel):
             name='LSTM2'
         )
 
+        self.fc_layer1 = HiddenLayer(
+            rng,
+            n_in=self.lstm_layer_sizes[0] + self.lstm_layer_sizes[1] + 5*5*20,
+            n_out=100,
+            activation='relu',
+            name='FC1'
+        )
         self.output_layer = HiddenLayer(
             rng,
-            n_in=self.lstm_layer_sizes[1] + 5*5*20,
+            n_in=100,
             n_out=10,
             activation=None,
             name='output'
         )
 
         self.params = self.read_layer.params + self.lstm_layer1.params +\
-            self.lstm_layer2.params + self.output_layer.params
+            self.lstm_layer2.params + self.output_layer.params +\
+            self.fc_layer1.params
         self.lstm_layers = [self.lstm_layer1]
 
     def get_predict_output(self, input, h_tm1, c_tm1):
@@ -174,10 +182,10 @@ class TestLSTM(AbstractModel):
     def recurrent_step(self, image, h_tm1, c_tm1):
         read, g_x, g_y, delta, sigma = self.read_layer.one_step(h_tm1, image)
         
-        read = read.flatten(ndim=2)
+        read_ = read.flatten(ndim=2)
 
         h_1, c_1 =\
-            self.lstm_layer1.one_step(conv,
+            self.lstm_layer1.one_step(read_,
                                       h_tm1[:, 0:self.lstm_layer_sizes[0]],
                                       c_tm1[:, 0:self.lstm_layer_sizes[0]])
         h_2, c_2 =\
@@ -185,13 +193,13 @@ class TestLSTM(AbstractModel):
                                       h_tm1[:, self.lstm_layer_sizes[0]:],
                                       c_tm1[:, self.lstm_layer_sizes[0]:]
                                       )
-        conv = self.conv_layer.one_step(read.dimshuffle([0, 'x', 1, 2]))
-        conv = conv.flatten(ndim=2)
-        lin_output = self.output_layer.one_step(T.concatenate([h_2, conv] axis=1))
-        output = T.nnet.softmax(lin_output)
-
         h = T.concatenate([h_1, h_2], axis=1)
         c = T.concatenate([c_1, c_2], axis=1)
+        conv = self.conv_layer.one_step(read.dimshuffle([0, 'x', 1, 2]))
+        conv = conv.flatten(ndim=2)
+        fc_output = self.fc_layer1.one_step(T.concatenate([h_1, h_2, conv], axis=1))
+        lin_output = self.output_layer.one_step(fc_output)
+        output = T.nnet.softmax(lin_output)
         return [h, c, output, g_y, g_x]
 
     def step_with_att(self, h_tm1, c_tm1, image):
@@ -211,7 +219,7 @@ class TestLSTM(AbstractModel):
                                                        train_batch_size)
         classification_loss = self.get_NLL_cost(train_output, self.target)
         tracking_loss = self.get_tracking_cost(g_y, g_x, target_y, target_x)
-        loss = 10 * classification_loss + tracking_loss
+        loss = 5 * classification_loss + tracking_loss
         updates = Adam(loss, self.params, lr=self.learning_rate)
         # updates = self.get_updates(loss, self.params, self.learning_rate)
         self.train_func = theano.function(
