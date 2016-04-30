@@ -17,7 +17,8 @@ patience = 15
 improvement_threshold = 1.005
 report_freq = 100.
 
-file_name = 'model_t%s_bs%d_sl%d_ep%d.p' % (repeat_style, batch_size, sequence_length, n_epochs)
+file_name = 'TESTmodel_t%s_bs%d_sl%d_ep%d.p' % (
+    repeat_style, batch_size, sequence_length, n_epochs)
 
 import pdb
 
@@ -26,7 +27,8 @@ sys.setrecursionlimit(30000)  # Needed for pickling
 
 def build_model():
 
-    model = models.TestLSTM((100, 100), learning_rate=learning_rate, batch_size=batch_size)
+    model = models.TestLSTM(
+        (100, 100), learning_rate=learning_rate, batch_size=batch_size)
 
     model.compile(train_batch_size=batch_size)
 
@@ -83,7 +85,7 @@ def train_model(model, train_images, train_targets):
                 plc = np.zeros((sequence_length, batch_size, 100, 100))
                 tx = np.zeros((sequence_length, batch_size))
                 ty = np.zeros((sequence_length, batch_size))
-                
+
                 for j in range(sequence_length):
                     plc[j], tx[j], ty[j] = movie_gen.next()
                 train_batch = np.swapaxes(plc, 0, 1)
@@ -135,7 +137,6 @@ if __name__ == '__main__':
     train_error = train_model(model,
                               train_images,
                               targets)
-
 
     pickle.dump(model, open(file_name, "wb"))
     pdb.set_trace()

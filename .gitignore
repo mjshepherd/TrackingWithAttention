@@ -1,2 +1,3 @@
 *.pyc
-figure/*
+figures/*
+models/*

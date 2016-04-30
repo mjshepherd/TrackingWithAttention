@@ -64,7 +64,7 @@ if __name__ == "__main__":
     img = numpy.asarray([img, img])
 
 
-    l = numpy.asarray([[0.0, 0.0, 0, 0], [0.0, -.3, -2.0, -2]], dtype=theano.config.floatX)
+    l = numpy.asarray([[0.0, 0.0, 0, 0], [0.0, -1, -2.0, -2]], dtype=theano.config.floatX)
     l_ = theano.shared(value=l, name='l', borrow=True)
     l_ = l_.reshape((5, 1))
 

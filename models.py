@@ -269,10 +269,10 @@ class TestLSTM(AbstractModel):
         #     ['x', 0]).repeat(batch_size, axis=0)
         # return initial_state
 
-    def predict(self, x, reset=True):
+    def predict(self, x, reset=True, batch_size=1):
         if reset:
             self.predict_h, self.predict_c = self.get_initial_state(
-                1, shared=False)
+                batch_size, shared=False)
 
         if len(x.shape) == 2:
             x = np.expand_dims(x, axis=0)
