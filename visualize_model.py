@@ -6,8 +6,9 @@ import matplotlib.pyplot as plt
 import pickle
 import pdb
 
-
-model_name = "model_tstill_bs50_sl10.p"
+sequence_length = 15
+model_name = sys.argv[1]
+sequence_type = sys.argv[2]
 N = 12
 
 from load_mnist import load_mnist, pad_mnist, movie_mnist, batch_pad_mnist
@@ -15,6 +16,8 @@ from load_mnist import load_mnist, pad_mnist, movie_mnist, batch_pad_mnist
 
 def load_model(name):
     return pickle.load(open(name, 'r'))
+
+model = load_model(model_name)
 
 
 def visualize_glimpse(image, x, y, delta, sigma, correct):
@@ -68,22 +71,40 @@ def plot_glimpse_vis(frames, glimpses):
 
 
 def test_image(image, label):
-    x = y = np.asarray(36)
-    im = pad_mnist(image, x=x, y=y)[0]
+    image = image.reshape((1, 28, 28))
+    if sequence_type == 'movie':
+        movie_gen = movie_mnist(image)
+        plc = np.zeros((sequence_length, 1, 100, 100))
+        tx = np.zeros((sequence_length, 1))
+        ty = np.zeros((sequence_length, 1))
 
-    model = load_model(model_name)
+        for j in range(sequence_length):
+            plc[j], tx[j], ty[j] = movie_gen.next()
+        image = np.swapaxes(plc, 0, 1)
+        tx += 14
+        ty += 14
+    elif sequence_type == 'still':
+        x = y = np.ones((1)) * 36
+        image, tx, ty = batch_pad_mnist(image, out_dim=100)
+        tx = np.expand_dims(tx, axis=0).repeat(
+            sequence_length, axis=0) + 14
+        ty = np.expand_dims(ty, axis=0).repeat(
+            sequence_length, axis=0) + 14
+        image = np.expand_dims(image, axis=1)
+        image = image.repeat(sequence_length, axis=1)
+
     glimpses = []
     frames = []
     reset = True
-    for i in range(4):
-        prediction, attention = model.predict(im, reset=reset)
+    for t in range(sequence_length):
+        prediction, attention = model.predict(image[:, t, :, :], reset=reset)
         reset = False
         correct = prediction.argmax() == label
 
         glimpse = attention[0].reshape((N, N))
         glimpses.append(glimpse)
         frame = visualize_glimpse(
-            im, attention[1], attention[2], attention[3], attention[4], correct=correct)
+            image[0, t, :, :], attention[1], attention[2], attention[3], attention[4], correct=correct)
         frames.append(frame)
     plot_glimpse_vis(frames, glimpses)
 
@@ -91,4 +112,5 @@ if __name__ == '__main__':
     images, labels = load_mnist(dataset="testing", path="mnist")
     images = images / 255.
 
-    test_image(images[0], labels[1])
+    for i in range(3):
+        test_image(images[23 + 3*i], labels[23 + 3*i])
